@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 7%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+
+    --primary: 355 89% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 20% 98%;
+    --secondary-foreground: 0 0% 7%;
+
+    --muted: 210 20% 98%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 355 79% 56%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 355 89% 42%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 7%;
+    --sidebar-primary: 355 89% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 355 89% 97%;
+    --sidebar-accent-foreground: 355 89% 42%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 355 89% 42%;
+
+    /* Custom tokens */
+    --surface: 210 20% 98%;
+    --surface-foreground: 0 0% 7%;
+    --stat-border-top: 355 89% 42%;
+    --badge-recording: 355 89% 42%;
+    --badge-processing: 35 92% 50%;
+    --badge-completed: 142 71% 45%;
+    --triage-low: 142 71% 45%;
+    --triage-medium: 35 92% 50%;
+    --triage-high: 355 89% 42%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .stat-card {
+    @apply bg-card rounded-xl p-6 shadow-sm border border-border relative overflow-hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-1 bg-primary;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200;
+  }
+
+  .sidebar-link-active {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground;
+  }
+
+  .sidebar-link-inactive {
+    @apply text-muted-foreground hover:bg-muted hover:text-foreground;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold text-foreground;
+  }
+
+  .page-subtitle {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .panel {
+    @apply bg-card rounded-xl border border-border shadow-sm;
+  }
+
+  .panel-header {
+    @apply px-6 py-4 border-b border-border;
+  }
+
+  .panel-body {
+    @apply p-6;
+  }
+
+  .alert-banner {
+    @apply bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3 text-primary;
+  }
+
+  .badge-status {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+
+  .waveform-bar {
+    @apply w-1 bg-primary rounded-full animate-pulse;
+  }
+}
+
+@keyframes waveform {
+  0%, 100% { height: 8px; }
+  50% { height: 24px; }
+}
+
+.animate-waveform {
+  animation: waveform 0.6s ease-in-out infinite;
+}
+
+.animate-waveform-delay-1 {
+  animation: waveform 0.6s ease-in-out 0.1s infinite;
+}
+
+.animate-waveform-delay-2 {
+  animation: waveform 0.6s ease-in-out 0.2s infinite;
+}
+
+.animate-waveform-delay-3 {
+  animation: waveform 0.6s ease-in-out 0.3s infinite;
+}
+
+.animate-waveform-delay-4 {
+  animation: waveform 0.6s ease-in-out 0.4s infinite;
+}
