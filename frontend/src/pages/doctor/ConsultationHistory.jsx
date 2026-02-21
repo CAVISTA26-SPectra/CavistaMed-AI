@@ -6,7 +6,7 @@ import {
   LayoutDashboard, FilePlus, Users, ClipboardList, Brain, Settings,
   Search, Calendar, Download, Eye, Filter, ChevronLeft, ChevronRight,
   X, Activity, AlertTriangle, Thermometer, Heart, Wind, Pill,
-  FileText, Shield, Clock
+  FileText, Shield, Clock, Stethoscope
 } from "lucide-react";
 
 const sidebarItems = [
@@ -492,34 +492,41 @@ const EMRModal = ({ consultation, onClose }) => {
         </div>
 
         {/* Modal Body */}
-        <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
-          {/* Patient Info & Triage */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-secondary/80 border border-border space-y-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Patient Information</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Name</span>
-                  <span className="text-sm font-medium text-foreground">{c.patient}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">ID</span>
-                  <span className="text-sm font-mono text-foreground">{c.patientId}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Age / Gender</span>
-                  <span className="text-sm text-foreground">{c.age}y / {c.gender}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Doctor</span>
-                  <span className="text-sm text-foreground">Dr. James Carter</span>
-                </div>
-              </div>
-            </div>
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5 sm:space-y-6">
 
-            <div className="p-4 rounded-xl bg-secondary/80 border border-border space-y-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Triage Assessment</h3>
-              <div className="flex items-center gap-2 mt-1">
+          {/* ═══ Patient Information (table) ═══ */}
+          <section>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <FileText className="w-3.5 h-3.5" /> Patient Information
+            </h3>
+            <div className="rounded-xl border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  {[
+                    ["Name", c.patient],
+                    ["Patient ID", c.patientId],
+                    ["Age / Gender", `${c.age} years / ${c.gender}`],
+                    ["Attending Doctor", "Dr. James Carter (DOC-042)"],
+                    ["Date & Time", `${c.date} at ${c.time}`],
+                    ["Consultation ID", c.id],
+                  ].map(([label, val], i) => (
+                    <tr key={i} className={i % 2 === 0 ? "bg-secondary/50" : "bg-card"}>
+                      <td className="px-4 py-2.5 text-xs font-medium text-muted-foreground w-1/3 sm:w-1/4">{label}</td>
+                      <td className="px-4 py-2.5 text-sm text-foreground font-medium">{val}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* ═══ Triage Assessment ═══ */}
+          <section>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Shield className="w-3.5 h-3.5" /> Triage Assessment
+            </h3>
+            <div className="p-4 rounded-xl bg-secondary/80 border border-border">
+              <div className="flex items-center gap-3 mb-2">
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${getTriageStyles(c.triageLevel)}`}>
                   <span className={`w-2 h-2 rounded-full ${getTriageDot(c.triageLevel)}`} />
                   {c.triageLevel} — {c.triageColor}
@@ -527,40 +534,41 @@ const EMRModal = ({ consultation, onClose }) => {
               </div>
               <p className="text-sm text-muted-foreground">{c.triageReasoning}</p>
               {c.redFlags.length > 0 && (
-                <div className="mt-2 p-2.5 rounded-lg bg-red-50 border border-red-200">
-                  <p className="text-xs font-semibold text-red-700 flex items-center gap-1.5">
+                <div className="mt-3 p-3 rounded-lg bg-red-50 border border-red-200">
+                  <p className="text-xs font-semibold text-red-700 flex items-center gap-1.5 mb-1">
                     <AlertTriangle className="w-3.5 h-3.5" /> Red Flags
                   </p>
                   {c.redFlags.map((f, i) => (
-                    <p key={i} className="text-xs text-red-600 mt-1">• {f}</p>
+                    <p key={i} className="text-xs text-red-600 mt-0.5">• {f}</p>
                   ))}
                 </div>
               )}
             </div>
-          </div>
+          </section>
 
-          {/* Chief Complaint */}
-          <div className="p-4 rounded-xl border border-border bg-primary/[0.03]">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Chief Complaint</h3>
-            <p className="text-sm text-foreground font-medium">{c.chiefComplaint}</p>
-          </div>
-
-          {/* Symptoms */}
-          <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Presenting Symptoms</h3>
-            <div className="flex flex-wrap gap-2">
-              {c.symptoms.map((s, i) => (
-                <span key={i} className="px-3 py-1.5 rounded-full bg-secondary border border-border text-xs font-medium text-foreground">
-                  {s}
-                </span>
-              ))}
+          {/* ═══ Chief Complaint (paragraph) ═══ */}
+          <section>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <ClipboardList className="w-3.5 h-3.5" /> Chief Complaint
+            </h3>
+            <div className="p-4 rounded-xl border border-border bg-primary/[0.03]">
+              <p className="text-sm text-foreground font-medium leading-relaxed">{c.chiefComplaint}</p>
             </div>
-          </div>
+            {c.symptoms.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {c.symptoms.map((s, i) => (
+                  <span key={i} className="px-3 py-1.5 rounded-full bg-secondary border border-border text-xs font-medium text-foreground">{s}</span>
+                ))}
+              </div>
+            )}
+          </section>
 
-          {/* Vitals */}
-          <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Vital Signs</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {/* ═══ Vital Signs (grid cards) ═══ */}
+          <section>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Heart className="w-3.5 h-3.5" /> Vital Signs
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
               {[
                 { label: "Heart Rate", value: `${c.vitals.heart_rate} bpm`, icon: Heart, color: "text-red-500" },
                 { label: "Blood Pressure", value: `${c.vitals.systolic_bp}/${c.vitals.diastolic_bp}`, icon: Activity, color: "text-blue-500" },
@@ -568,124 +576,175 @@ const EMRModal = ({ consultation, onClose }) => {
                 { label: "Temperature", value: c.vitals.temp, icon: Thermometer, color: "text-orange-500" },
                 { label: "Resp Rate", value: `${c.vitals.resp_rate}/min`, icon: Wind, color: "text-emerald-500" },
               ].map((v, i) => (
-                <div key={i} className="p-3 rounded-xl bg-secondary/80 border border-border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <v.icon className={`w-3.5 h-3.5 ${v.color}`} />
-                    <span className="text-[11px] text-muted-foreground">{v.label}</span>
-                  </div>
+                <div key={i} className="p-3 rounded-xl bg-secondary/80 border border-border text-center">
+                  <v.icon className={`w-4 h-4 ${v.color} mx-auto mb-1`} />
                   <p className="text-sm font-bold text-foreground">{v.value}</p>
+                  <p className="text-[10px] text-muted-foreground">{v.label}</p>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
 
-          {/* History & Allergies */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3 rounded-xl bg-secondary/80 border border-border">
-              <h4 className="text-[11px] text-muted-foreground font-semibold uppercase mb-2">Medical History</h4>
-              {c.history.length > 0 ? c.history.map((h, i) => (
-                <p key={i} className="text-xs text-foreground">• {h}</p>
-              )) : <p className="text-xs text-muted-foreground italic">None reported</p>}
+          {/* ═══ Medical History & Allergies (table) ═══ */}
+          <section>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5" /> Medical History & Allergies
+            </h3>
+            <div className="rounded-xl border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="bg-secondary/50">
+                    <td className="px-4 py-2.5 text-xs font-medium text-muted-foreground w-1/3 sm:w-1/4">Past History</td>
+                    <td className="px-4 py-2.5 text-sm text-foreground">{c.history.length > 0 ? c.history.join(", ") : "None reported"}</td>
+                  </tr>
+                  <tr className="bg-card">
+                    <td className="px-4 py-2.5 text-xs font-medium text-muted-foreground">Allergies</td>
+                    <td className="px-4 py-2.5">
+                      {c.allergies.length > 0
+                        ? c.allergies.map((a, i) => <span key={i} className="inline-block px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-medium mr-1">{a}</span>)
+                        : <span className="text-sm text-muted-foreground italic">No known drug allergies (NKDA)</span>
+                      }
+                    </td>
+                  </tr>
+                  <tr className="bg-secondary/50">
+                    <td className="px-4 py-2.5 text-xs font-medium text-muted-foreground">Current Medications</td>
+                    <td className="px-4 py-2.5 text-sm text-foreground">{c.currentMedications.length > 0 ? c.currentMedications.join(", ") : "None"}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <div className="p-3 rounded-xl bg-secondary/80 border border-border">
-              <h4 className="text-[11px] text-muted-foreground font-semibold uppercase mb-2">Allergies</h4>
-              {c.allergies.length > 0 ? c.allergies.map((a, i) => (
-                <span key={i} className="inline-block px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-medium mr-1 mb-1">{a}</span>
-              )) : <p className="text-xs text-muted-foreground italic">NKDA</p>}
-            </div>
-            <div className="p-3 rounded-xl bg-secondary/80 border border-border">
-              <h4 className="text-[11px] text-muted-foreground font-semibold uppercase mb-2">Current Medications</h4>
-              {c.currentMedications.length > 0 ? c.currentMedications.map((m, i) => (
-                <p key={i} className="text-xs text-foreground">• {m}</p>
-              )) : <p className="text-xs text-muted-foreground italic">None</p>}
-            </div>
-          </div>
+          </section>
 
-          {/* Diagnosis */}
-          <div className="p-4 rounded-xl border-2 border-primary/20 bg-primary/[0.03]">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Assessment & Diagnosis</h3>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-base font-bold text-foreground">{c.diagnosis}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{c.icdDescription}</p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <span className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-mono font-bold rounded-lg">{c.icd}</span>
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: `${c.aiConfidence}%` }} />
-                  </div>
-                  <span className="text-xs font-bold text-primary">{c.aiConfidence}%</span>
+          {/* ═══ Assessment & Diagnosis (styled card) ═══ */}
+          <section>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Stethoscope className="w-3.5 h-3.5" /> Assessment & Diagnosis
+            </h3>
+            <div className="p-4 rounded-xl border-2 border-primary/20 bg-primary/[0.03]">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div>
+                  <p className="text-base sm:text-lg font-bold text-foreground">{c.diagnosis}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{c.icdDescription}</p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-mono font-bold rounded-lg">{c.icd}</span>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Treatment Plan */}
-          <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Treatment Plan</h3>
-            <div className="space-y-2">
-              {c.treatmentPlan.map((t, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-secondary/80 border border-border">
-                  <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-[10px] font-bold text-primary">{i + 1}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm text-foreground">{t.action}</p>
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t.type}</span>
-                  </div>
+              <div className="flex items-center gap-2 mt-3">
+                <span className="text-xs text-muted-foreground">AI Confidence:</span>
+                <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary rounded-full" style={{ width: `${c.aiConfidence}%` }} />
                 </div>
-              ))}
+                <span className="text-xs font-bold text-primary">{c.aiConfidence}%</span>
+              </div>
             </div>
-          </div>
+          </section>
 
-          {/* Medications */}
-          <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Prescribed Medications</h3>
+          {/* ═══ Treatment Plan (table) ═══ */}
+          <section>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <ClipboardList className="w-3.5 h-3.5" /> Treatment Plan
+            </h3>
+            <div className="rounded-xl border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-secondary border-b border-border">
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase w-8">#</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase">Action</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase hidden sm:table-cell">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {c.treatmentPlan.map((t, i) => (
+                    <tr key={i} className={`${i % 2 === 0 ? "bg-card" : "bg-secondary/30"} border-b border-border last:border-0`}>
+                      <td className="px-4 py-2.5">
+                        <span className="w-5 h-5 rounded-md bg-primary/10 text-primary text-[10px] font-bold inline-flex items-center justify-center">{i + 1}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-foreground">{t.action}</td>
+                      <td className="px-4 py-2.5 hidden sm:table-cell">
+                        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium uppercase">{t.type}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* ═══ Prescribed Medications (table) ═══ */}
+          <section>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Pill className="w-3.5 h-3.5" /> Prescribed Medications
+            </h3>
             {c.medications.length > 0 ? (
-              <div className="space-y-2">
-                {c.medications.map((m, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/80 border border-border">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                      <Pill className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{m.name} — {m.dose}</p>
-                      <p className="text-xs text-muted-foreground">{m.route} · {m.frequency} — {m.class}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="rounded-xl border border-border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-secondary border-b border-border">
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase">Medication</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase hidden sm:table-cell">Dose</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase hidden sm:table-cell">Route</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase">Frequency</th>
+                      <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-muted-foreground uppercase hidden md:table-cell">Class</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {c.medications.map((m, i) => (
+                      <tr key={i} className={`${i % 2 === 0 ? "bg-card" : "bg-secondary/30"} border-b border-border last:border-0`}>
+                        <td className="px-4 py-2.5 font-medium text-foreground">
+                          <div className="flex items-center gap-2">
+                            <Pill className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                            <span>{m.name}</span>
+                            <span className="sm:hidden text-[10px] text-muted-foreground">({m.dose})</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 text-foreground hidden sm:table-cell">{m.dose}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground hidden sm:table-cell">{m.route}</td>
+                        <td className="px-4 py-2.5 text-foreground">{m.frequency}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground hidden md:table-cell">{m.class}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground italic">No medications prescribed.</p>
+              <p className="text-sm text-muted-foreground italic p-3 rounded-xl bg-secondary/50 border border-border">No medications prescribed for this consultation.</p>
             )}
-          </div>
+          </section>
 
-          {/* Warnings */}
+          {/* ═══ Warnings ═══ */}
           {c.warnings.length > 0 && (
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200">
-              <h3 className="text-xs font-semibold text-red-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5" /> Clinical Warnings
-              </h3>
-              {c.warnings.map((w, i) => (
-                <p key={i} className="text-sm text-red-700 mt-1">⚠ {w}</p>
-              ))}
-            </div>
+            <section>
+              <div className="p-4 rounded-xl bg-red-50 border border-red-200">
+                <h3 className="text-xs font-bold text-red-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Clinical Warnings
+                </h3>
+                {c.warnings.map((w, i) => (
+                  <p key={i} className="text-sm text-red-700 mt-1">⚠ {w}</p>
+                ))}
+              </div>
+            </section>
           )}
 
-          {/* Doctor Notes */}
-          <div className="p-4 rounded-xl bg-secondary/80 border border-border">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Doctor's Clinical Notes</h3>
-            <p className="text-sm text-foreground italic leading-relaxed">{c.doctorNotes}</p>
-          </div>
+          {/* ═══ Doctor's Notes (paragraph) ═══ */}
+          <section>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <FileText className="w-3.5 h-3.5" /> Doctor's Clinical Notes
+            </h3>
+            <div className="p-4 rounded-xl bg-secondary/80 border border-border">
+              <p className="text-sm text-foreground italic leading-relaxed">{c.doctorNotes}</p>
+            </div>
+          </section>
 
-          {/* Patient Summary */}
-          <div className="p-4 rounded-xl bg-primary/[0.04] border border-primary/15">
-            <h3 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          {/* ═══ Patient-Friendly Summary (paragraph) ═══ */}
+          <section>
+            <h3 className="text-xs font-bold text-primary uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Brain className="w-3.5 h-3.5" /> Patient-Friendly Summary
             </h3>
-            <p className="text-sm text-foreground leading-relaxed">{c.patientSummary}</p>
-          </div>
+            <div className="p-4 rounded-xl bg-primary/[0.04] border border-primary/15">
+              <p className="text-sm text-foreground leading-relaxed">{c.patientSummary}</p>
+            </div>
+          </section>
         </div>
 
         {/* Modal Footer */}

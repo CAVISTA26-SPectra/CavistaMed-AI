@@ -9,7 +9,6 @@ import DoctorDashboard from "./pages/doctor/DoctorDashboard";
 import NewConsultation from "./pages/doctor/NewConsultation";
 import ConsultationHistory from "./pages/doctor/ConsultationHistory";
 import AIInsights from "./pages/doctor/AIInsights";
-import AdminDashboard from "./pages/admin/AdminDashboard";
 import PatientDashboard from "./pages/patient/PatientDashboard";
 import MedicineInfo from "./pages/patient/MedicineInfo";
 import NotFound from "./pages/NotFound";
@@ -29,7 +28,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={user ? <Navigate to={`/${user.role}`} replace /> : <Login />} />
-      
+
       <Route path="/doctor" element={<ProtectedRoute allowedRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
       <Route path="/doctor/consultation" element={<ProtectedRoute allowedRole="doctor"><NewConsultation /></ProtectedRoute>} />
       <Route path="/doctor/patients" element={<ProtectedRoute allowedRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
@@ -37,8 +36,6 @@ const AppRoutes = () => {
       <Route path="/doctor/insights" element={<ProtectedRoute allowedRole="doctor"><AIInsights /></ProtectedRoute>} />
       <Route path="/doctor/settings" element={<ProtectedRoute allowedRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
 
-      <Route path="/admin" element={<ProtectedRoute allowedRole="admin"><AdminDashboard /></ProtectedRoute>} />
-      <Route path="/admin/*" element={<ProtectedRoute allowedRole="admin"><AdminDashboard /></ProtectedRoute>} />
 
       <Route path="/patient" element={<ProtectedRoute allowedRole="patient"><PatientDashboard /></ProtectedRoute>} />
       <Route path="/patient/medicine-info" element={<ProtectedRoute allowedRole="patient"><MedicineInfo /></ProtectedRoute>} />

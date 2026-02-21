@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { Activity, Shield, Stethoscope, User } from "lucide-react";
+import { Activity, Stethoscope, User } from "lucide-react";
 
 const roles = [
-  { role: "admin", label: "Administrator", icon: Shield, description: "System management & analytics" },
   { role: "doctor", label: "Doctor", icon: Stethoscope, description: "Clinical workspace & consultations" },
   { role: "patient", label: "Patient", icon: User, description: "Health portal & records" },
 ];
@@ -19,7 +18,7 @@ const Login = () => {
   const handleLogin = (e) => {
     e.preventDefault();
     login(selectedRole);
-    const paths = { admin: "/admin", doctor: "/doctor", patient: "/patient" };
+    const paths = { doctor: "/doctor", patient: "/patient" };
     navigate(paths[selectedRole]);
   };
 
@@ -46,15 +45,15 @@ const Login = () => {
 
           <form onSubmit={handleLogin} className="panel-body space-y-5">
             {/* Role Selection */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {roles.map(({ role, label, icon: Icon, description }) => (
                 <button
                   key={role}
                   type="button"
                   onClick={() => setSelectedRole(role)}
                   className={`p-3 rounded-xl border-2 transition-all duration-200 text-center ${selectedRole === role
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground/30"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/30"
                     }`}
                 >
                   <Icon className={`w-5 h-5 mx-auto mb-1 ${selectedRole === role ? "text-primary" : "text-muted-foreground"}`} />
