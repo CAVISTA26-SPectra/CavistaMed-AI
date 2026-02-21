@@ -252,21 +252,22 @@ const downloadPDF = (c) => {
     }
   };
 
-  // ── Colors ──
-  const navy = [30, 42, 74];
-  const accent = [180, 30, 80];
-  const lightGray = [245, 246, 248];
-  const midGray = [230, 232, 236];
+  // ── Colors (matching website theme — HSL 355 89% 42%) ──
+  const brand = [202, 23, 38];       // primary crimson red
+  const brandDark = [140, 16, 26];   // darker shade for contrast
+  const brandLight = [255, 240, 242]; // very light red tint
+  const lightGray = [248, 249, 251];
+  const midGray = [228, 230, 236];
   const white = [255, 255, 255];
   const darkText = [30, 30, 30];
-  const mutedText = [100, 105, 115];
+  const mutedText = [101, 113, 139];
   const danger = [200, 30, 30];
 
-  // ── Section Banner (navy bar with white text) ──
+  // ── Section Banner (brand-colored bar with white text) ──
   const sectionBanner = (title) => {
     checkPage(30);
     y += 4;
-    doc.setFillColor(...navy);
+    doc.setFillColor(...brand);
     doc.roundedRect(left, y, cw, 8, 1, 1, "F");
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "bold");
@@ -318,7 +319,7 @@ const downloadPDF = (c) => {
 
     // Header row
     checkPage(rowH + 2);
-    doc.setFillColor(...navy);
+    doc.setFillColor(...brandDark);
     let xPos = left;
     headers.forEach((h, i) => {
       const w = cw * colWidths[i];
@@ -393,14 +394,14 @@ const downloadPDF = (c) => {
   // ═══════════════════════════════════════════════════════════════
   //                         HEADER
   // ═══════════════════════════════════════════════════════════════
-  // Gradient-like header (magenta → navy)
+  // Gradient-like header (brand crimson → darker shade)
   const gradientSteps = 60;
   const headerH = 28;
   for (let i = 0; i < gradientSteps; i++) {
     const ratio = i / gradientSteps;
-    const r = Math.round(180 + (30 - 180) * ratio);
-    const g = Math.round(30 + (42 - 30) * ratio);
-    const b = Math.round(120 + (74 - 120) * ratio);
+    const r = Math.round(202 + (100 - 202) * ratio);
+    const g = Math.round(23 + (10 - 23) * ratio);
+    const b = Math.round(38 + (28 - 38) * ratio);
     doc.setFillColor(r, g, b);
     doc.rect((pageWidth / gradientSteps) * i, 0, (pageWidth / gradientSteps) + 1, headerH, "F");
   }
@@ -440,7 +441,7 @@ const downloadPDF = (c) => {
 
   // ═══ CHIEF COMPLAINT ═══
   sectionBanner("Chief Complaint");
-  drawParagraph(c.chiefComplaint, { bg: [240, 245, 255] });
+  drawParagraph(c.chiefComplaint, { bg: brandLight });
 
   // ═══ PRESENTING SYMPTOMS ═══
   if (c.symptoms.length > 0) {
@@ -525,7 +526,7 @@ const downloadPDF = (c) => {
 
   // ═══ PATIENT-FRIENDLY SUMMARY ═══
   sectionBanner("Patient-Friendly Summary");
-  drawParagraph(c.patientSummary, { bg: [240, 245, 255] });
+  drawParagraph(c.patientSummary, { bg: brandLight });
 
 
   // ──── FOOTER on every page ────

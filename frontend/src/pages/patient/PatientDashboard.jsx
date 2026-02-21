@@ -175,20 +175,22 @@ const downloadPDF = (c) => {
 
   const checkPage = (n = 20) => { if (y + n > pageHeight - 20) { doc.addPage(); y = 20; } };
 
-  // ── Colors ──
-  const navy = [30, 42, 74];
-  const lightGray = [245, 246, 248];
-  const midGray = [230, 232, 236];
+  // ── Colors (matching website theme — HSL 355 89% 42%) ──
+  const brand = [202, 23, 38];
+  const brandDark = [140, 16, 26];
+  const brandLight = [255, 240, 242];
+  const lightGray = [248, 249, 251];
+  const midGray = [228, 230, 236];
   const white = [255, 255, 255];
   const darkText = [30, 30, 30];
-  const mutedText = [100, 105, 115];
+  const mutedText = [101, 113, 139];
   const danger = [200, 30, 30];
 
   // ── Section Banner ──
   const sectionBanner = (title) => {
     checkPage(30);
     y += 4;
-    doc.setFillColor(...navy);
+    doc.setFillColor(...brand);
     doc.roundedRect(left, y, cw, 8, 1, 1, "F");
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "bold");
@@ -225,7 +227,7 @@ const downloadPDF = (c) => {
   const drawMultiColTable = (headers, rows, colWidths) => {
     const rowH = 8;
     checkPage(rowH + 2);
-    doc.setFillColor(...navy);
+    doc.setFillColor(...brandDark);
     let xPos = left;
     headers.forEach((h, i) => {
       const w = cw * colWidths[i];
@@ -294,9 +296,9 @@ const downloadPDF = (c) => {
   const headerH = 28;
   for (let i = 0; i < gradientSteps; i++) {
     const ratio = i / gradientSteps;
-    const r = Math.round(180 + (30 - 180) * ratio);
-    const g = Math.round(30 + (42 - 30) * ratio);
-    const b = Math.round(120 + (74 - 120) * ratio);
+    const r = Math.round(202 + (100 - 202) * ratio);
+    const g = Math.round(23 + (10 - 23) * ratio);
+    const b = Math.round(38 + (28 - 38) * ratio);
     doc.setFillColor(r, g, b);
     doc.rect((pageWidth / gradientSteps) * i, 0, (pageWidth / gradientSteps) + 1, headerH, "F");
   }
@@ -332,7 +334,7 @@ const downloadPDF = (c) => {
 
   // ═══ CHIEF COMPLAINT ═══
   sectionBanner("Why You Visited");
-  drawParagraph(c.chiefComplaint, { bg: [240, 245, 255] });
+  drawParagraph(c.chiefComplaint, { bg: brandLight });
 
   // ═══ SYMPTOMS ═══
   if (c.symptoms.length > 0) {
@@ -416,7 +418,7 @@ const downloadPDF = (c) => {
 
   // ═══ YOUR HEALTH SUMMARY ═══
   sectionBanner("What This Means For You");
-  drawParagraph(c.patientSummary, { bg: [240, 245, 255] });
+  drawParagraph(c.patientSummary, { bg: brandLight });
 
 
   // ── Footer ──
