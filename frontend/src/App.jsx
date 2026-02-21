@@ -12,6 +12,7 @@ import AIInsights from "./pages/doctor/AIInsights";
 import PatientDashboard from "./pages/patient/PatientDashboard";
 import MedicineInfo from "./pages/patient/MedicineInfo";
 import NotFound from "./pages/NotFound";
+import ScrollToTop from "@/components/shared/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const App = () => (
       <AuthProvider>
         <BrowserRouter>
           <AppRoutes />
+          <ScrollToTop />
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
