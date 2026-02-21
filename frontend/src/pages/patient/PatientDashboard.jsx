@@ -163,135 +163,272 @@ const getTriageDot = (level) => {
   }
 };
 
-// ── PDF Download (Patient-focused) ──
+// ── PDF Download (Patient-focused — Professional) ──
 const downloadPDF = (c) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   let y = 15;
   const left = 14;
   const right = pageWidth - 14;
   const cw = right - left;
 
-  const checkPage = (n = 20) => { if (y + n > 275) { doc.addPage(); y = 15; } };
-  const drawLine = () => { doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3); doc.line(left, y, right, y); y += 6; };
+  const checkPage = (n = 20) => { if (y + n > pageHeight - 20) { doc.addPage(); y = 20; } };
 
-  const sectionTitle = (t) => {
-    checkPage(25);
-    doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(180, 30, 50);
-    doc.text(t.toUpperCase(), left, y); y += 2;
-    doc.setDrawColor(180, 30, 50); doc.setLineWidth(0.5);
-    doc.line(left, y, left + doc.getTextWidth(t.toUpperCase()) + 4, y); y += 7;
+  // ── Colors ──
+  const navy = [30, 42, 74];
+  const lightGray = [245, 246, 248];
+  const midGray = [230, 232, 236];
+  const white = [255, 255, 255];
+  const darkText = [30, 30, 30];
+  const mutedText = [100, 105, 115];
+  const danger = [200, 30, 30];
+
+  // ── Section Banner ──
+  const sectionBanner = (title) => {
+    checkPage(30);
+    y += 4;
+    doc.setFillColor(...navy);
+    doc.roundedRect(left, y, cw, 8, 1, 1, "F");
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...white);
+    doc.text(title, left + 4, y + 5.5);
+    y += 13;
   };
 
-  const labelValue = (label, value) => {
-    checkPage(12);
-    doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(100, 100, 100);
-    doc.text(label + ":", left, y);
-    doc.setFont("helvetica", "normal"); doc.setTextColor(30, 30, 30);
-    const lw = doc.getTextWidth(label + ":  ");
-    const lines = doc.splitTextToSize(String(value), cw - lw);
-    doc.text(lines, left + lw, y); y += lines.length * 5 + 2;
+  // ── 2-col table ──
+  const drawTable = (rows, col1Width = 0.35) => {
+    const c1w = cw * col1Width;
+    const c2w = cw - c1w;
+    const rowH = 8;
+    rows.forEach(([label, value], i) => {
+      checkPage(rowH + 2);
+      const bg = i % 2 === 0 ? lightGray : white;
+      doc.setFillColor(...bg);
+      doc.rect(left, y, cw, rowH, "F");
+      doc.setDrawColor(...midGray);
+      doc.setLineWidth(0.3);
+      doc.rect(left, y, c1w, rowH, "S");
+      doc.rect(left + c1w, y, c2w, rowH, "S");
+      doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...darkText);
+      doc.text(String(label), left + 3, y + 5.5);
+      doc.setFont("helvetica", "normal"); doc.setTextColor(50, 50, 50);
+      const val = doc.splitTextToSize(String(value || "—"), c2w - 6);
+      doc.text(val[0] || "—", left + c1w + 3, y + 5.5);
+      y += rowH;
+    });
+    y += 2;
   };
 
-  const bulletItem = (text) => {
-    checkPage(10);
-    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(30, 30, 30);
-    doc.text("•", left + 1, y);
-    const lines = doc.splitTextToSize(text, cw - 8);
-    doc.text(lines, left + 7, y); y += lines.length * 5 + 1;
+  // ── Multi-col table ──
+  const drawMultiColTable = (headers, rows, colWidths) => {
+    const rowH = 8;
+    checkPage(rowH + 2);
+    doc.setFillColor(...navy);
+    let xPos = left;
+    headers.forEach((h, i) => {
+      const w = cw * colWidths[i];
+      doc.rect(xPos, y, w, rowH, "F");
+      doc.setFontSize(7.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...white);
+      doc.text(h, xPos + 3, y + 5.5);
+      xPos += w;
+    });
+    y += rowH;
+    rows.forEach((row, ri) => {
+      checkPage(rowH + 2);
+      const bg = ri % 2 === 0 ? lightGray : white;
+      xPos = left;
+      row.forEach((cell, ci) => {
+        const w = cw * colWidths[ci];
+        doc.setFillColor(...bg);
+        doc.rect(xPos, y, w, rowH, "F");
+        doc.setDrawColor(...midGray);
+        doc.setLineWidth(0.2);
+        doc.rect(xPos, y, w, rowH, "S");
+        doc.setFontSize(7.5);
+        doc.setFont("helvetica", ci === 0 ? "bold" : "normal");
+        doc.setTextColor(...darkText);
+        const t = doc.splitTextToSize(String(cell), w - 6)[0] || "";
+        doc.text(t, xPos + 3, y + 5.5);
+        xPos += w;
+      });
+      y += rowH;
+    });
+    y += 2;
   };
 
-  // Header
-  doc.setFillColor(180, 30, 50); doc.rect(0, 0, pageWidth, 32, "F");
-  doc.setFontSize(18); doc.setFont("helvetica", "bold"); doc.setTextColor(255, 255, 255);
-  doc.text("CavistaMed AI", left, 14);
-  doc.setFontSize(9); doc.setFont("helvetica", "normal");
-  doc.text("Patient Medical Record", left, 21);
-  doc.setFontSize(8);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, right - 55, 21);
-  doc.text(`Consultation ID: ${c.id}`, right - 55, 27);
-  y = 40;
+  // ── Paragraph ──
+  const drawParagraph = (text, options = {}) => {
+    const { italic = false, color = darkText, bg = null } = options;
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", italic ? "italic" : "normal");
+    doc.setTextColor(...color);
+    const lines = doc.splitTextToSize(String(text), cw - 8);
+    const blockH = lines.length * 4.5 + 6;
+    checkPage(blockH + 2);
+    if (bg) { doc.setFillColor(...bg); doc.roundedRect(left, y, cw, blockH, 1.5, 1.5, "F"); }
+    doc.text(lines, left + 4, y + 5);
+    y += blockH + 3;
+  };
 
-  // Patient Info
-  sectionTitle("Patient Information");
-  labelValue("Patient Name", "Emily Richards");
-  labelValue("Patient ID", "PAT-1087");
-  labelValue("Age / Gender", "42 years / Female");
-  labelValue("Date of Visit", `${c.date} at ${c.time}`);
-  labelValue("Attending Doctor", `${c.doctor} (${c.doctorId})`);
-  labelValue("Specialty", c.specialty);
-  y += 3; drawLine();
+  // ── Bullets ──
+  const drawBullets = (items, options = {}) => {
+    const { color = darkText } = options;
+    items.forEach(item => {
+      checkPage(10);
+      doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...color);
+      doc.text("•", left + 4, y);
+      const lines = doc.splitTextToSize(String(item), cw - 14);
+      doc.text(lines, left + 10, y);
+      y += lines.length * 4.5 + 1.5;
+    });
+    y += 2;
+  };
 
-  // Complaint & Symptoms
-  sectionTitle("Chief Complaint");
-  doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(30, 30, 30);
-  const ccLines = doc.splitTextToSize(c.chiefComplaint, cw);
-  doc.text(ccLines, left, y); y += ccLines.length * 5 + 5;
+
+  // ═══════════════════════════════════════════════
+  //                GRADIENT HEADER
+  // ═══════════════════════════════════════════════
+  const gradientSteps = 60;
+  const headerH = 28;
+  for (let i = 0; i < gradientSteps; i++) {
+    const ratio = i / gradientSteps;
+    const r = Math.round(180 + (30 - 180) * ratio);
+    const g = Math.round(30 + (42 - 30) * ratio);
+    const b = Math.round(120 + (74 - 120) * ratio);
+    doc.setFillColor(r, g, b);
+    doc.rect((pageWidth / gradientSteps) * i, 0, (pageWidth / gradientSteps) + 1, headerH, "F");
+  }
+  doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.setTextColor(...white);
+  doc.text("Patient Medical Record", left, 12);
+  doc.setFontSize(8); doc.setFont("helvetica", "normal");
+  doc.text("CavistaMed AI — AI Clinical Co-Pilot", left, 18);
+  doc.setFontSize(7);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, right - 50, 12);
+  doc.text(`Report ID: ${c.id}`, right - 50, 17);
+  doc.text(`Status: ${c.status.toUpperCase()}`, right - 50, 22);
+  y = headerH + 8;
+
+
+  // ═══ PATIENT IDENTITY ═══
+  sectionBanner("Patient Identity");
+  drawTable([
+    ["Patient Name", "Emily Richards"],
+    ["Patient ID", "PAT-1087"],
+    ["Age", "42 years"],
+    ["Gender", "Female"],
+  ]);
+
+  // ═══ VISIT DETAILS ═══
+  sectionBanner("Visit Details");
+  drawTable([
+    ["Date & Time", `${c.date} at ${c.time}`],
+    ["Attending Doctor", `${c.doctor} (${c.doctorId})`],
+    ["Specialty", c.specialty],
+    ["Consultation ID", c.id],
+    ["Status", c.status.charAt(0).toUpperCase() + c.status.slice(1)],
+  ]);
+
+  // ═══ CHIEF COMPLAINT ═══
+  sectionBanner("Why You Visited");
+  drawParagraph(c.chiefComplaint, { bg: [240, 245, 255] });
+
+  // ═══ SYMPTOMS ═══
   if (c.symptoms.length > 0) {
-    sectionTitle("Presenting Symptoms");
-    c.symptoms.forEach(s => bulletItem(s));
-    y += 3;
+    sectionBanner("Presenting Symptoms");
+    drawBullets(c.symptoms);
   }
-  drawLine();
 
-  // Vitals
-  sectionTitle("Vital Signs");
-  labelValue("Heart Rate", `${c.vitals.heart_rate} bpm`);
-  labelValue("Blood Pressure", `${c.vitals.systolic_bp}/${c.vitals.diastolic_bp} mmHg`);
-  labelValue("SpO2", `${c.vitals.SpO2}%`);
-  labelValue("Temperature", c.vitals.temp);
-  labelValue("Respiratory Rate", `${c.vitals.resp_rate} breaths/min`);
-  y += 3; drawLine();
+  // ═══ VITAL SIGNS ═══
+  sectionBanner("Vital Signs");
+  drawMultiColTable(
+    ["Parameter", "Value", "Unit"],
+    [
+      ["Heart Rate", String(c.vitals.heart_rate), "bpm"],
+      ["Systolic BP", String(c.vitals.systolic_bp), "mmHg"],
+      ["Diastolic BP", String(c.vitals.diastolic_bp), "mmHg"],
+      ["SpO2", String(c.vitals.SpO2), "%"],
+      ["Temperature", c.vitals.temp, "°F"],
+      ["Respiratory Rate", String(c.vitals.resp_rate), "breaths/min"],
+    ],
+    [0.4, 0.35, 0.25]
+  );
 
-  // Diagnosis
-  sectionTitle("Assessment & Diagnosis");
-  labelValue("Primary Diagnosis", c.diagnosis);
-  labelValue("ICD-10 Code", `${c.icd} — ${c.icdDescription}`);
-  labelValue("AI Confidence", `${c.aiConfidence}%`);
-  labelValue("Triage Level", `${c.triageLevel} (${c.triageColor})`);
-  y += 3; drawLine();
+  // ═══ MEDICAL HISTORY ═══
+  sectionBanner("Medical History & Allergies");
+  drawTable([
+    ["Past Medical History", c.history.length > 0 ? c.history.join(", ") : "No significant history"],
+    ["Known Allergies", c.allergies.length > 0 ? c.allergies.join(", ") : "No Known Drug Allergies (NKDA)"],
+    ["Current Medications", c.currentMedications.length > 0 ? c.currentMedications.join("; ") : "None"],
+  ]);
 
-  // Treatment Plan
-  sectionTitle("Treatment Plan");
-  c.treatmentPlan.forEach(t => bulletItem(`[${t.type.toUpperCase()}] ${t.action}`));
-  y += 3;
+  // ═══ DIAGNOSIS ═══
+  sectionBanner("Assessment & Diagnosis");
+  drawTable([
+    ["Primary Diagnosis", c.diagnosis],
+    ["ICD-10 Code", `${c.icd} — ${c.icdDescription}`],
+    ["AI Confidence Score", `${c.aiConfidence}%`],
+    ["Triage Level", `${c.triageLevel} (${c.triageColor})`],
+  ]);
 
-  // Medications
-  sectionTitle("Prescribed Medications");
+  // ═══ TREATMENT PLAN ═══
+  sectionBanner("Treatment Plan");
+  drawMultiColTable(
+    ["#", "Action", "Type"],
+    c.treatmentPlan.map((t, i) => [String(i + 1), t.action, t.type.toUpperCase()]),
+    [0.08, 0.67, 0.25]
+  );
+
+  // ═══ PRESCRIBED MEDICATIONS ═══
+  sectionBanner("Prescribed Medications");
   if (c.medications.length > 0) {
-    c.medications.forEach(m => bulletItem(`${m.name} — ${m.dose} | ${m.route} | ${m.frequency} (${m.class})`));
+    drawMultiColTable(
+      ["Medication", "Dose", "Route", "Frequency", "Class"],
+      c.medications.map(m => [m.name, m.dose, m.route, m.frequency, m.class]),
+      [0.22, 0.13, 0.12, 0.3, 0.23]
+    );
   } else {
-    doc.setFontSize(9); doc.text("No new medications prescribed.", left, y); y += 6;
+    drawParagraph("No new medications prescribed for this visit.", { italic: true, color: mutedText });
   }
 
-  // Lab Results
+  // ═══ LAB RESULTS ═══
   if (c.labResults && c.labResults.length > 0) {
-    y += 3; sectionTitle("Lab & Test Results");
-    c.labResults.forEach(l => labelValue(l.test, `${l.result} (${l.date})`));
+    sectionBanner("Lab & Test Results");
+    drawMultiColTable(
+      ["Test", "Result", "Date"],
+      c.labResults.map(l => [l.test, l.result, l.date]),
+      [0.35, 0.40, 0.25]
+    );
   }
 
-  // Warnings
+  // ═══ WARNINGS ═══
   if (c.warnings.length > 0) {
-    y += 3; sectionTitle("⚠ Clinical Warnings");
-    doc.setTextColor(200, 30, 30);
-    c.warnings.forEach(w => bulletItem(w));
-    doc.setTextColor(30, 30, 30);
+    sectionBanner("⚠ Important Warnings");
+    c.warnings.forEach(w => {
+      drawParagraph(`⚠  ${w}`, { color: danger, bg: [255, 240, 240] });
+    });
   }
-  y += 3; drawLine();
 
-  // Patient Summary
-  sectionTitle("Your Health Summary");
-  doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(30, 30, 30);
-  const sl = doc.splitTextToSize(c.patientSummary, cw);
-  checkPage(sl.length * 5 + 5); doc.text(sl, left, y); y += sl.length * 5 + 10;
+  // ═══ DOCTOR'S NOTES ═══
+  sectionBanner("Doctor's Notes");
+  drawParagraph(c.doctorNotes, { italic: true, bg: [245, 246, 248] });
 
-  // Footer
+  // ═══ YOUR HEALTH SUMMARY ═══
+  sectionBanner("What This Means For You");
+  drawParagraph(c.patientSummary, { bg: [240, 245, 255] });
+
+
+  // ── Footer ──
   const pages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
-    doc.setFontSize(7); doc.setTextColor(150, 150, 150);
-    doc.text("CavistaMed AI — Confidential Patient Medical Record", left, 290);
-    doc.text(`Page ${i} of ${pages}`, right - 20, 290);
+    doc.setDrawColor(...midGray);
+    doc.setLineWidth(0.3);
+    doc.line(left, pageHeight - 12, right, pageHeight - 12);
+    doc.setFontSize(6.5); doc.setTextColor(...mutedText);
+    doc.text("CavistaMed AI — Confidential Patient Medical Record", left, pageHeight - 8);
+    doc.text(`Page ${i} of ${pages}`, right - 18, pageHeight - 8);
   }
   doc.save(`EMR_${c.id}_Emily_Richards.pdf`);
 };

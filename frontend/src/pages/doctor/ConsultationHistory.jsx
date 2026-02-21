@@ -239,212 +239,308 @@ const getTriageDot = (level) => {
 const downloadPDF = (c) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   let y = 15;
-  const leftMargin = 14;
-  const rightMargin = pageWidth - 14;
-  const contentWidth = rightMargin - leftMargin;
+  const left = 14;
+  const right = pageWidth - 14;
+  const cw = right - left;
 
   const checkPage = (needed = 20) => {
-    if (y + needed > 275) {
+    if (y + needed > pageHeight - 20) {
       doc.addPage();
-      y = 15;
+      y = 20;
     }
   };
 
-  const drawLine = () => {
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.3);
-    doc.line(leftMargin, y, rightMargin, y);
-    y += 6;
-  };
+  // ── Colors ──
+  const navy = [30, 42, 74];
+  const accent = [180, 30, 80];
+  const lightGray = [245, 246, 248];
+  const midGray = [230, 232, 236];
+  const white = [255, 255, 255];
+  const darkText = [30, 30, 30];
+  const mutedText = [100, 105, 115];
+  const danger = [200, 30, 30];
 
-  const sectionTitle = (title) => {
-    checkPage(25);
-    doc.setFontSize(11);
+  // ── Section Banner (navy bar with white text) ──
+  const sectionBanner = (title) => {
+    checkPage(30);
+    y += 4;
+    doc.setFillColor(...navy);
+    doc.roundedRect(left, y, cw, 8, 1, 1, "F");
+    doc.setFontSize(8.5);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(180, 30, 50);
-    doc.text(title.toUpperCase(), leftMargin, y);
-    y += 2;
-    doc.setDrawColor(180, 30, 50);
-    doc.setLineWidth(0.5);
-    doc.line(leftMargin, y, leftMargin + doc.getTextWidth(title.toUpperCase()) + 4, y);
-    y += 7;
+    doc.setTextColor(...white);
+    doc.text(title, left + 4, y + 5.5);
+    y += 13;
   };
 
-  const labelValue = (label, value) => {
-    checkPage(12);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(100, 100, 100);
-    doc.text(label + ":", leftMargin, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(30, 30, 30);
-    const labelW = doc.getTextWidth(label + ":  ");
-    const lines = doc.splitTextToSize(String(value), contentWidth - labelW);
-    doc.text(lines, leftMargin + labelW, y);
-    y += lines.length * 5 + 2;
-  };
+  // ── Draw Bordered Table ──
+  const drawTable = (rows, col1Width = 0.35) => {
+    const c1w = cw * col1Width;
+    const c2w = cw - c1w;
+    const rowH = 8;
 
-  const bulletItem = (text, indent = 0) => {
-    checkPage(10);
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(30, 30, 30);
-    const x = leftMargin + 4 + indent;
-    doc.text("•", x - 3, y);
-    const lines = doc.splitTextToSize(text, contentWidth - 8 - indent);
-    doc.text(lines, x, y);
-    y += lines.length * 5 + 1;
-  };
+    rows.forEach(([label, value], i) => {
+      checkPage(rowH + 2);
+      const bgColor = i % 2 === 0 ? lightGray : white;
 
-  // ──── HEADER ────
-  doc.setFillColor(180, 30, 50);
-  doc.rect(0, 0, pageWidth, 32, "F");
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(255, 255, 255);
-  doc.text("CavistaMed AI", leftMargin, 14);
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text("Electronic Medical Record", leftMargin, 21);
-  doc.setFontSize(8);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, rightMargin - 55, 21);
-  doc.text(`Consultation ID: ${c.id}`, rightMargin - 55, 27);
-  y = 40;
+      // Row background
+      doc.setFillColor(...bgColor);
+      doc.rect(left, y, cw, rowH, "F");
 
-  // ──── PATIENT INFORMATION ────
-  sectionTitle("Patient Information");
-  labelValue("Patient Name", c.patient);
-  labelValue("Patient ID", c.patientId);
-  labelValue("Age / Gender", `${c.age} years / ${c.gender}`);
-  labelValue("Date of Visit", `${c.date} at ${c.time}`);
-  labelValue("Attending Doctor", "Dr. James Carter (DOC-042)");
-  y += 3;
-  drawLine();
+      // Borders
+      doc.setDrawColor(...midGray);
+      doc.setLineWidth(0.3);
+      doc.rect(left, y, c1w, rowH, "S");
+      doc.rect(left + c1w, y, c2w, rowH, "S");
 
-  // ──── CHIEF COMPLAINT ────
-  sectionTitle("Chief Complaint");
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(30, 30, 30);
-  const ccLines = doc.splitTextToSize(c.chiefComplaint, contentWidth);
-  doc.text(ccLines, leftMargin, y);
-  y += ccLines.length * 5 + 5;
-  drawLine();
+      // Label (bold)
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...darkText);
+      doc.text(String(label), left + 3, y + 5.5);
 
-  // ──── SYMPTOMS ────
-  sectionTitle("Presenting Symptoms");
-  c.symptoms.forEach(s => bulletItem(s));
-  y += 3;
-  drawLine();
+      // Value (normal)
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(50, 50, 50);
+      const valLines = doc.splitTextToSize(String(value || "—"), c2w - 6);
+      doc.text(valLines[0] || "—", left + c1w + 3, y + 5.5);
 
-  // ──── VITALS ────
-  sectionTitle("Vital Signs");
-  labelValue("Heart Rate", `${c.vitals.heart_rate} bpm`);
-  labelValue("Blood Pressure", `${c.vitals.systolic_bp}/${c.vitals.diastolic_bp} mmHg`);
-  labelValue("SpO2", `${c.vitals.SpO2}%`);
-  labelValue("Temperature", c.vitals.temp);
-  labelValue("Respiratory Rate", `${c.vitals.resp_rate} breaths/min`);
-  y += 3;
-  drawLine();
-
-  // ──── MEDICAL HISTORY ────
-  sectionTitle("Medical History & Allergies");
-  if (c.history.length > 0) {
-    labelValue("History", c.history.join(", "));
-  } else {
-    labelValue("History", "No significant past medical history");
-  }
-  if (c.allergies.length > 0) {
-    labelValue("Allergies", c.allergies.join(", "));
-  } else {
-    labelValue("Allergies", "No known drug allergies (NKDA)");
-  }
-  if (c.currentMedications.length > 0) {
-    labelValue("Current Medications", c.currentMedications.join(", "));
-  }
-  y += 3;
-  drawLine();
-
-  // ──── TRIAGE ────
-  sectionTitle("Triage Assessment");
-  labelValue("Severity Level", `${c.triageLevel} (${c.triageColor})`);
-  labelValue("Reasoning", c.triageReasoning);
-  if (c.redFlags.length > 0) {
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(200, 30, 30);
-    doc.text("Red Flags:", leftMargin, y);
-    y += 5;
-    c.redFlags.forEach(f => bulletItem(f));
-  }
-  y += 3;
-  drawLine();
-
-  // ──── DIAGNOSIS ────
-  sectionTitle("Assessment & Diagnosis");
-  labelValue("Primary Diagnosis", c.diagnosis);
-  labelValue("ICD-10 Code", `${c.icd} — ${c.icdDescription}`);
-  labelValue("AI Confidence", `${c.aiConfidence}%`);
-  y += 3;
-  drawLine();
-
-  // ──── TREATMENT PLAN ────
-  sectionTitle("Treatment Plan");
-  c.treatmentPlan.forEach(t => bulletItem(`[${t.type.toUpperCase()}] ${t.action}`));
-  y += 3;
-
-  // ──── MEDICATIONS ────
-  sectionTitle("Prescribed Medications");
-  if (c.medications.length > 0) {
-    c.medications.forEach(m => {
-      bulletItem(`${m.name} — ${m.dose} | ${m.route} | ${m.frequency} (${m.class})`);
+      y += rowH;
     });
-  } else {
-    doc.setFontSize(9);
-    doc.text("No medications prescribed.", leftMargin, y);
-    y += 6;
+    y += 2;
+  };
+
+  // ── Draw Multi-column Table ──
+  const drawMultiColTable = (headers, rows, colWidths) => {
+    const rowH = 8;
+
+    // Header row
+    checkPage(rowH + 2);
+    doc.setFillColor(...navy);
+    let xPos = left;
+    headers.forEach((h, i) => {
+      const w = cw * colWidths[i];
+      doc.rect(xPos, y, w, rowH, "F");
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...white);
+      doc.text(h, xPos + 3, y + 5.5);
+      xPos += w;
+    });
+    y += rowH;
+
+    // Data rows
+    rows.forEach((row, ri) => {
+      checkPage(rowH + 2);
+      const bgColor = ri % 2 === 0 ? lightGray : white;
+      xPos = left;
+
+      row.forEach((cell, ci) => {
+        const w = cw * colWidths[ci];
+        doc.setFillColor(...bgColor);
+        doc.rect(xPos, y, w, rowH, "F");
+        doc.setDrawColor(...midGray);
+        doc.setLineWidth(0.2);
+        doc.rect(xPos, y, w, rowH, "S");
+        doc.setFontSize(7.5);
+        doc.setFont("helvetica", ci === 0 ? "bold" : "normal");
+        doc.setTextColor(...darkText);
+        const truncated = doc.splitTextToSize(String(cell), w - 6)[0] || "";
+        doc.text(truncated, xPos + 3, y + 5.5);
+        xPos += w;
+      });
+      y += rowH;
+    });
+    y += 2;
+  };
+
+  // ── Paragraph block ──
+  const drawParagraph = (text, options = {}) => {
+    const { italic = false, color = darkText, bg = null } = options;
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", italic ? "italic" : "normal");
+    doc.setTextColor(...color);
+    const lines = doc.splitTextToSize(String(text), cw - 8);
+    const blockH = lines.length * 4.5 + 6;
+    checkPage(blockH + 2);
+    if (bg) {
+      doc.setFillColor(...bg);
+      doc.roundedRect(left, y, cw, blockH, 1.5, 1.5, "F");
+    }
+    doc.text(lines, left + 4, y + 5);
+    y += blockH + 3;
+  };
+
+  // ── Bullet list ──
+  const drawBullets = (items, options = {}) => {
+    const { color = darkText } = options;
+    items.forEach(item => {
+      checkPage(10);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...color);
+      doc.text("•", left + 4, y);
+      const lines = doc.splitTextToSize(String(item), cw - 14);
+      doc.text(lines, left + 10, y);
+      y += lines.length * 4.5 + 1.5;
+    });
+    y += 2;
+  };
+
+
+  // ═══════════════════════════════════════════════════════════════
+  //                         HEADER
+  // ═══════════════════════════════════════════════════════════════
+  // Gradient-like header (magenta → navy)
+  const gradientSteps = 60;
+  const headerH = 28;
+  for (let i = 0; i < gradientSteps; i++) {
+    const ratio = i / gradientSteps;
+    const r = Math.round(180 + (30 - 180) * ratio);
+    const g = Math.round(30 + (42 - 30) * ratio);
+    const b = Math.round(120 + (74 - 120) * ratio);
+    doc.setFillColor(r, g, b);
+    doc.rect((pageWidth / gradientSteps) * i, 0, (pageWidth / gradientSteps) + 1, headerH, "F");
   }
 
-  // ──── WARNINGS ────
-  if (c.warnings.length > 0) {
-    y += 3;
-    sectionTitle("⚠ Clinical Warnings");
-    doc.setTextColor(200, 30, 30);
-    c.warnings.forEach(w => bulletItem(w));
-    doc.setTextColor(30, 30, 30);
-  }
-  y += 3;
-  drawLine();
-
-  // ──── DOCTOR NOTES ────
-  sectionTitle("Doctor's Clinical Notes");
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "italic");
-  doc.setTextColor(60, 60, 60);
-  const noteLines = doc.splitTextToSize(c.doctorNotes, contentWidth);
-  checkPage(noteLines.length * 5 + 5);
-  doc.text(noteLines, leftMargin, y);
-  y += noteLines.length * 5 + 5;
-  drawLine();
-
-  // ──── PATIENT SUMMARY ────
-  sectionTitle("Patient-Friendly Summary");
-  doc.setFontSize(9);
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...white);
+  doc.text("Smart EMR Consultation Record", left, 12);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(30, 30, 30);
-  const summLines = doc.splitTextToSize(c.patientSummary, contentWidth);
-  checkPage(summLines.length * 5 + 5);
-  doc.text(summLines, leftMargin, y);
-  y += summLines.length * 5 + 10;
+  doc.text("CavistaMed AI — AI Clinical Co-Pilot", left, 18);
+  doc.setFontSize(7);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, right - 50, 12);
+  doc.text(`Report ID: ${c.id}`, right - 50, 17);
+  doc.text(`Status: ${c.status.toUpperCase()}`, right - 50, 22);
+  y = headerH + 8;
 
-  // ──── FOOTER ────
+
+  // ═══ PATIENT IDENTITY ═══
+  sectionBanner("Patient Identity");
+  drawTable([
+    ["Patient Name", c.patient],
+    ["Patient ID", c.patientId],
+    ["Age", `${c.age} years`],
+    ["Gender", c.gender],
+    ["Date of Visit", `${c.date} at ${c.time}`],
+    ["Consultation ID", c.id],
+  ]);
+
+  // ═══ ATTENDING PHYSICIAN ═══
+  sectionBanner("Attending Physician");
+  drawTable([
+    ["Doctor Name", "Dr. James Carter"],
+    ["Doctor ID", "DOC-042"],
+    ["Specialty", "Cardiology / Internal Medicine"],
+  ]);
+
+  // ═══ CHIEF COMPLAINT ═══
+  sectionBanner("Chief Complaint");
+  drawParagraph(c.chiefComplaint, { bg: [240, 245, 255] });
+
+  // ═══ PRESENTING SYMPTOMS ═══
+  if (c.symptoms.length > 0) {
+    sectionBanner("Presenting Symptoms");
+    drawBullets(c.symptoms);
+  }
+
+  // ═══ VITAL SIGNS ═══
+  sectionBanner("Vital Signs");
+  drawMultiColTable(
+    ["Parameter", "Value", "Unit"],
+    [
+      ["Heart Rate", String(c.vitals.heart_rate), "bpm"],
+      ["Systolic BP", String(c.vitals.systolic_bp), "mmHg"],
+      ["Diastolic BP", String(c.vitals.diastolic_bp), "mmHg"],
+      ["SpO2", String(c.vitals.SpO2), "%"],
+      ["Temperature", c.vitals.temp, "°F"],
+      ["Respiratory Rate", String(c.vitals.resp_rate), "breaths/min"],
+    ],
+    [0.4, 0.35, 0.25]
+  );
+
+  // ═══ MEDICAL HISTORY & ALLERGIES ═══
+  sectionBanner("Medical History & Allergies");
+  drawTable([
+    ["Past Medical History", c.history.length > 0 ? c.history.join(", ") : "No significant history"],
+    ["Known Allergies", c.allergies.length > 0 ? c.allergies.join(", ") : "No Known Drug Allergies (NKDA)"],
+    ["Current Medications", c.currentMedications.length > 0 ? c.currentMedications.join("; ") : "None"],
+  ]);
+
+  // ═══ TRIAGE ASSESSMENT ═══
+  sectionBanner("Triage Assessment");
+  drawTable([
+    ["Severity Level", `${c.triageLevel} (${c.triageColor})`],
+    ["Clinical Reasoning", c.triageReasoning],
+  ]);
+  if (c.redFlags.length > 0) {
+    doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(...danger);
+    doc.text("⚠  RED FLAGS:", left + 2, y); y += 5;
+    drawBullets(c.redFlags, { color: danger });
+  }
+
+  // ═══ ASSESSMENT & DIAGNOSIS ═══
+  sectionBanner("Assessment & Diagnosis");
+  drawTable([
+    ["Primary Diagnosis", c.diagnosis],
+    ["ICD-10 Code", `${c.icd} — ${c.icdDescription}`],
+    ["AI Confidence Score", `${c.aiConfidence}%`],
+  ]);
+
+  // ═══ TREATMENT PLAN ═══
+  sectionBanner("Treatment Plan");
+  drawMultiColTable(
+    ["#", "Action", "Type"],
+    c.treatmentPlan.map((t, i) => [String(i + 1), t.action, t.type.toUpperCase()]),
+    [0.08, 0.67, 0.25]
+  );
+
+  // ═══ PRESCRIBED MEDICATIONS ═══
+  sectionBanner("Prescribed Medications");
+  if (c.medications.length > 0) {
+    drawMultiColTable(
+      ["Medication", "Dose", "Route", "Frequency", "Class"],
+      c.medications.map(m => [m.name, m.dose, m.route, m.frequency, m.class]),
+      [0.22, 0.13, 0.12, 0.3, 0.23]
+    );
+  } else {
+    drawParagraph("No new medications prescribed for this consultation.", { italic: true, color: mutedText });
+  }
+
+  // ═══ CLINICAL WARNINGS ═══
+  if (c.warnings.length > 0) {
+    sectionBanner("⚠ Clinical Warnings");
+    c.warnings.forEach(w => {
+      drawParagraph(`⚠  ${w}`, { color: danger, bg: [255, 240, 240] });
+    });
+  }
+
+  // ═══ DOCTOR'S CLINICAL NOTES ═══
+  sectionBanner("Doctor's Clinical Notes");
+  drawParagraph(c.doctorNotes, { italic: true, bg: [245, 246, 248] });
+
+  // ═══ PATIENT-FRIENDLY SUMMARY ═══
+  sectionBanner("Patient-Friendly Summary");
+  drawParagraph(c.patientSummary, { bg: [240, 245, 255] });
+
+
+  // ──── FOOTER on every page ────
   const totalPages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-    doc.setFontSize(7);
-    doc.setTextColor(150, 150, 150);
-    doc.text("CavistaMed AI — Confidential Medical Record", leftMargin, 290);
-    doc.text(`Page ${i} of ${totalPages}`, rightMargin - 20, 290);
+    // Footer line
+    doc.setDrawColor(...midGray);
+    doc.setLineWidth(0.3);
+    doc.line(left, pageHeight - 12, right, pageHeight - 12);
+    // Footer text
+    doc.setFontSize(6.5);
+    doc.setTextColor(...mutedText);
+    doc.text("CavistaMed AI — Confidential Electronic Medical Record", left, pageHeight - 8);
+    doc.text(`Page ${i} of ${totalPages}`, right - 18, pageHeight - 8);
   }
 
   doc.save(`EMR_${c.id}_${c.patient.replace(/\s/g, "_")}.pdf`);
