@@ -1,12 +1,12 @@
 import os
-from models.clinical_data import create_clinical_data
-from services.diagnosis_engine import DiagnosisEngine
-from services.normalizer import DiagnosisNormalizer
-from services.icd_mapper import ICDMapper
-from services.emr_builder import EMRBuilder
-from services.patient_summary_engine import PatientSummaryEngine
-from services.triage_engine import TriageEngine
-from services.treatment_engine import TreatmentEngine
+from .models.clinical_data import create_clinical_data
+from .services.diagnosis_engine import DiagnosisEngine
+from .services.normalizer import DiagnosisNormalizer
+from .services.icd_mapper import ICDMapper
+from .services.emr_builder import EMRBuilder
+from .services.patient_summary_engine import PatientSummaryEngine
+from .services.triage_engine import TriageEngine
+from .services.treatment_engine import TreatmentEngine
 
 class ClinicalPipeline:
     """

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { transcribeAudio, processClinicalData } from "@/services/api";
 import {
   LayoutDashboard, FilePlus, Users, ClipboardList, Brain, Settings,
   Mic, MicOff, FileText, Download, Send, ChevronDown, ChevronRight,
   AlertTriangle, CheckCircle, Activity, Heart, Thermometer, Wind,
-  Stethoscope, Pill, Clock, Shield, User
+  Stethoscope, Pill, Clock, Shield, User, Loader2
 } from "lucide-react";
 
 const sidebarItems = [
@@ -43,7 +44,37 @@ const treatments = [
 
 const NewConsultation = () => {
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [expandedSections, setExpandedSections] = useState(["complaint", "vitals", "assessment", "plan"]);
+  const [transcriptLines, setTranscriptLines] = useState([
+    { speaker: "Doctor", text: "Good morning. What brings you in today?" },
+    { speaker: "Patient", text: "I've been having these terrible headaches for about three days now. They won't go away." },
+    { speaker: "Doctor", text: "Can you describe the pain? Where is it located and how severe is it on a scale of 1-10?" },
+    { speaker: "Patient", text: "It's mostly in the front of my head, like a pressure. I'd say about a 7. I also feel dizzy sometimes." },
+    { speaker: "Doctor", text: "Have you been monitoring your blood pressure at home?" },
+    { speaker: "Patient", text: "Yes, it's been higher than usual. Around 155 over 90." },
+  ]);
+  const [error, setError] = useState(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const audioMimeTypeRef = useRef("audio/webm");
+
+  const getSupportedAudioMimeType = () => {
+    const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/ogg", "audio/mp4"];
+    if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) {
+      return "audio/webm";
+    }
+    return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "audio/webm";
+  };
+
+  const mimeTypeToExtension = (mimeType) => {
+    const normalized = (mimeType || "").split(";")[0];
+    if (normalized === "audio/ogg") return "ogg";
+    if (normalized === "audio/mp4") return "mp4";
+    if (normalized === "audio/mpeg") return "mp3";
+    if (normalized === "audio/wav") return "wav";
+    return "webm";
+  };
 
   const toggleSection = (key) => {
     setExpandedSections(prev =>
@@ -51,14 +82,124 @@ const NewConsultation = () => {
     );
   };
 
-  const transcriptLines = [
-    { speaker: "Doctor", text: "Good morning. What brings you in today?" },
-    { speaker: "Patient", text: "I've been having these terrible headaches for about three days now. They won't go away." },
-    { speaker: "Doctor", text: "Can you describe the pain? Where is it located and how severe is it on a scale of 1-10?" },
-    { speaker: "Patient", text: "It's mostly in the front of my head, like a pressure. I'd say about a 7. I also feel dizzy sometimes." },
-    { speaker: "Doctor", text: "Have you been monitoring your blood pressure at home?" },
-    { speaker: "Patient", text: "Yes, it's been higher than usual. Around 155 over 90." },
-  ];
+  const startRecording = async () => {
+    try {
+      setError(null);
+      audioChunksRef.current = [];
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const supportedMimeType = getSupportedAudioMimeType();
+      audioMimeTypeRef.current = supportedMimeType;
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: supportedMimeType });
+      
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: audioMimeTypeRef.current });
+        await processAudio(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorderRef.current.start(300);
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Error starting recording:", err);
+      setError("Could not access microphone. Please check permissions.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  const processAudio = async (audioBlob) => {
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      if (!audioBlob || audioBlob.size === 0) {
+        throw new Error("No audio captured. Please record again.");
+      }
+
+      const extension = mimeTypeToExtension(audioMimeTypeRef.current);
+      const fileType = (audioMimeTypeRef.current || "audio/webm").split(";")[0];
+      const audioFile = new File([audioBlob], `recording.${extension}`, { type: fileType });
+      const result = await transcribeAudio(audioFile);
+      
+      setTranscriptLines(prev => [
+        ...prev,
+        { speaker: "Patient", text: result.transcript }
+      ]);
+
+      // Sample clinical data for demo
+      const clinicalData = {
+        symptoms: ["headache", "dizziness", "high blood pressure"],
+        duration: "3 days",
+        severity: "7/10",
+        vitals: { blood_pressure: "158/95", heart_rate: "82" },
+        history: ["hypertension", "diabetes"],
+        medications: ["Lisinopril 10mg", "Metformin 500mg"],
+        allergies: []
+      };
+
+      const pipelineResult = await processClinicalData(clinicalData);
+      
+      if (pipelineResult.status === "success") {
+        console.log("Pipeline result:", pipelineResult);
+      }
+
+    } catch (err) {
+      console.error("Error processing audio:", err);
+      setError(err.message || "Failed to process audio");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const generateEMR = async () => {
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const clinicalData = {
+        symptoms: ["headache", "dizziness"],
+        duration: "3 days",
+        severity: "7/10",
+        vitals: { blood_pressure: "158/95", heart_rate: "82" },
+        history: ["hypertension"],
+        medications: ["Lisinopril 10mg"],
+        allergies: []
+      };
+
+      const result = await processClinicalData(clinicalData);
+      
+      if (result.status === "success") {
+        console.log("EMR generated:", result);
+      } else {
+        setError(result.error_message || "Failed to generate EMR");
+      }
+
+    } catch (err) {
+      console.error("Error generating EMR:", err);
+      setError(err.message || "Failed to generate EMR");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const getSeverityColor = (s) => {
     if (s === "high") return "text-red-600 bg-red-50";
@@ -93,14 +234,15 @@ const NewConsultation = () => {
           <div className="flex flex-col items-center py-6 sm:py-8 border-b border-border/50">
             {/* Mic Button */}
             <button
-              onClick={() => setIsRecording(!isRecording)}
+              onClick={toggleRecording}
+              disabled={isProcessing}
               className={`rounded-full flex items-center justify-center transition-all duration-500 ${isRecording
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                 : "bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105"
-                }`}
+                } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
               style={{ width: '72px', height: '72px' }}
             >
-              {isRecording ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
+              {isProcessing ? <Loader2 className="w-7 h-7 animate-spin" /> : isRecording ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
             </button>
 
             {/* Horizontal wavy dots — visible when recording */}
@@ -136,6 +278,10 @@ const NewConsultation = () => {
                 Listening... Click to stop
               </p>
             )}
+
+            {error && (
+              <p className="mt-3 text-xs text-red-600 text-center max-w-[260px]">{error}</p>
+            )}
           </div>
 
           {/* Transcript */}
@@ -157,9 +303,8 @@ const NewConsultation = () => {
 
           {/* Generate Button */}
           <div className="px-4 sm:px-5 py-3 sm:py-4 border-t border-border">
-            <button className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all flex items-center justify-center gap-2">
-              <FileText className="w-4 h-4" />
-              Generate EMR
+            <button onClick={generateEMR} disabled={isProcessing} className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              {isProcessing ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : <><FileText className="w-4 h-4" /> Generate EMR</>}
             </button>
           </div>
         </div>
