@@ -89,31 +89,53 @@ const NewConsultation = () => {
             </span>
           </div>
 
-          {/* Mic Button */}
+          {/* Mic Button with wavy dots */}
           <div className="flex flex-col items-center py-6 sm:py-8 border-b border-border/50">
+            {/* Mic Button */}
             <button
               onClick={() => setIsRecording(!isRecording)}
-              className={`w-18 h-18 sm:w-22 sm:h-22 rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
-                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-110"
+              className={`rounded-full flex items-center justify-center transition-all duration-500 ${isRecording
+                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                 : "bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105"
                 }`}
-              style={{ width: isRecording ? '88px' : '76px', height: isRecording ? '88px' : '76px' }}
+              style={{ width: '72px', height: '72px' }}
             >
-              {isRecording ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
+              {isRecording ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
             </button>
 
-            {isRecording && (
-              <div className="flex items-end gap-1 mt-4 h-8">
-                {[1, 2, 3, 4, 5, 6, 7].map(i => (
-                  <div key={i} className={`w-1 bg-primary rounded-full animate-waveform${i > 1 ? `-delay-${Math.min(i - 1, 4)}` : ''}`}
-                    style={{ animationDelay: `${i * 0.08}s`, height: `${8 + Math.random() * 16}px` }} />
-                ))}
+            {/* Horizontal wavy dots — visible when recording */}
+            {isRecording ? (
+              <div className="flex items-center justify-center gap-[5px] mt-5 h-8">
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => {
+                  const baseSize = [5, 6, 7, 8, 7, 8, 9, 8, 7, 8, 7, 6, 5][i];
+                  return (
+                    <div
+                      key={i}
+                      className="rounded-full"
+                      style={{
+                        width: `${baseSize}px`,
+                        minWidth: `${baseSize}px`,
+                        height: `${baseSize}px`,
+                        backgroundColor: `hsl(355, 89%, ${38 + i * 2}%)`,
+                        animation: 'wave-dot 1.2s ease-in-out infinite',
+                        animationDelay: `${i * 0.08}s`,
+                        boxShadow: `0 0 ${baseSize}px hsl(355, 89%, 42%, 0.3)`,
+                      }}
+                    />
+                  );
+                })}
               </div>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-4">
+                Click to start recording
+              </p>
             )}
 
-            <p className="text-xs text-muted-foreground mt-3">
-              {isRecording ? "Listening... Click to stop" : "Click to start recording"}
-            </p>
+            {isRecording && (
+              <p className="text-[11px] text-primary font-medium mt-2 animate-pulse">
+                Listening... Click to stop
+              </p>
+            )}
           </div>
 
           {/* Transcript */}
