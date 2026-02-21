@@ -83,6 +83,13 @@ export default {
           completed: "hsl(var(--badge-completed))",
         },
       },
+      boxShadow: {
+        'neu-sm': '3px 3px 6px #d1d5db, -3px -3px 6px #ffffff',
+        'neu': '5px 5px 10px #d1d5db, -5px -5px 10px #ffffff',
+        'neu-lg': '8px 8px 16px #d1d5db, -8px -8px 16px #ffffff',
+        'neu-inset': 'inset 3px 3px 6px #d1d5db, inset -3px -3px 6px #ffffff',
+        'neu-pressed': 'inset 2px 2px 5px #d1d5db, inset -2px -2px 5px #ffffff',
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

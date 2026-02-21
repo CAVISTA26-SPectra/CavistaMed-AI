@@ -70,14 +70,34 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold tracking-tight;
   }
 }
 
 @layer components {
+
+  /* ── Neumorphism Variables ── */
+  :root {
+    --neu-light: #ffffff;
+    --neu-dark: #d1d5db;
+    --neu-bg: #f0f2f5;
+  }
+
+  /* ── Stat Card (raised neumorphic) ── */
   .stat-card {
-    @apply bg-card rounded-xl shadow-sm border border-border relative overflow-hidden;
+    @apply bg-card rounded-xl border-0 relative overflow-hidden transition-all duration-300;
+    box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
+  }
+
+  .stat-card:hover {
+    box-shadow: 7px 7px 14px var(--neu-dark), -7px -7px 14px var(--neu-light);
+    transform: translateY(-1px);
   }
 
   .stat-card::before {
@@ -85,18 +105,25 @@
     @apply absolute top-0 left-0 right-0 h-1 bg-primary;
   }
 
+  /* ── Sidebar Links ── */
   .sidebar-link {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200;
   }
 
   .sidebar-link-active {
     @apply bg-sidebar-accent text-sidebar-accent-foreground;
+    box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
   }
 
   .sidebar-link-inactive {
-    @apply text-muted-foreground hover:bg-muted hover:text-foreground;
+    @apply text-muted-foreground hover:text-foreground;
   }
 
+  .sidebar-link-inactive:hover {
+    box-shadow: 3px 3px 6px var(--neu-dark), -3px -3px 6px var(--neu-light);
+  }
+
+  /* ── Page Headings ── */
   .page-title {
     @apply text-2xl font-bold text-foreground;
   }
@@ -105,12 +132,18 @@
     @apply text-sm text-muted-foreground;
   }
 
+  /* ── Panel (raised neumorphic) ── */
   .panel {
-    @apply bg-card rounded-xl border border-border shadow-sm;
+    @apply bg-card rounded-xl border-0 transition-all duration-300;
+    box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
+  }
+
+  .panel:hover {
+    box-shadow: 7px 7px 14px var(--neu-dark), -7px -7px 14px var(--neu-light);
   }
 
   .panel-header {
-    @apply px-4 py-3 border-b border-border;
+    @apply px-4 py-3 border-b border-border/50;
   }
 
   @screen sm {
@@ -129,22 +162,59 @@
     }
   }
 
+  /* ── Alert Banner ── */
   .alert-banner {
-    @apply bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3 text-primary;
+    @apply bg-primary/5 rounded-xl p-4 flex items-center gap-3 text-primary border-0 transition-all duration-300;
+    box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
   }
 
+  /* ── Badge Status ── */
   .badge-status {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+    box-shadow: 2px 2px 4px var(--neu-dark), -2px -2px 4px var(--neu-light);
   }
 
+  /* ── Waveform Bar ── */
   .waveform-bar {
     @apply w-1 bg-primary rounded-full animate-pulse;
+  }
+
+  /* ── Neumorphic Utility Classes ── */
+  .neu-card {
+    @apply bg-card rounded-xl border-0 transition-all duration-300;
+    box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
+  }
+
+  .neu-card:hover {
+    box-shadow: 7px 7px 14px var(--neu-dark), -7px -7px 14px var(--neu-light);
+    transform: translateY(-1px);
+  }
+
+  .neu-flat {
+    box-shadow: 3px 3px 6px var(--neu-dark), -3px -3px 6px var(--neu-light);
+  }
+
+  .neu-concave {
+    box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
+    background: linear-gradient(145deg, #e6e8eb, #ffffff);
+  }
+
+  .neu-convex {
+    box-shadow: 3px 3px 6px var(--neu-dark), -3px -3px 6px var(--neu-light);
+    background: linear-gradient(145deg, #ffffff, #e6e8eb);
   }
 }
 
 @keyframes waveform {
-  0%, 100% { height: 8px; }
-  50% { height: 24px; }
+
+  0%,
+  100% {
+    height: 8px;
+  }
+
+  50% {
+    height: 24px;
+  }
 }
 
 .animate-waveform {
@@ -165,4 +235,108 @@
 
 .animate-waveform-delay-4 {
   animation: waveform 0.6s ease-in-out 0.4s infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   GLOBAL NEUMORPHISM OVERRIDES
+   Applied to common UI patterns across the entire app
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Navbar ── */
+header.sticky {
+  box-shadow: 0 4px 10px var(--neu-dark), 0 -2px 6px var(--neu-light);
+  border-bottom: none !important;
+}
+
+/* ── Sidebar ── */
+aside,
+nav[class*="sidebar"],
+div[class*="sidebar"]>div {
+  box-shadow: 4px 0 10px var(--neu-dark), -2px 0 6px var(--neu-light);
+}
+
+/* ── All bg-card rounded containers (cards, panels, modals) ── */
+.bg-card[class*="rounded"] {
+  box-shadow: 5px 5px 10px var(--neu-dark), -5px -5px 10px var(--neu-light);
+  border-color: transparent !important;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.bg-card[class*="rounded"]:hover {
+  box-shadow: 7px 7px 14px var(--neu-dark), -7px -7px 14px var(--neu-light);
+}
+
+/* ── bg-secondary rounded containers (inner surfaces) ── */
+.bg-secondary[class*="rounded"] {
+  box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+}
+
+/* ── Buttons (raised → pressed on active) ── */
+button[class*="rounded"][class*="bg-primary"],
+a[class*="rounded"][class*="bg-primary"] {
+  box-shadow: 3px 3px 6px var(--neu-dark), -3px -3px 6px var(--neu-light);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+button[class*="rounded"][class*="bg-primary"]:hover,
+a[class*="rounded"][class*="bg-primary"]:hover {
+  box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+  transform: translateY(-1px);
+}
+
+button[class*="rounded"][class*="bg-primary"]:active,
+a[class*="rounded"][class*="bg-primary"]:active {
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.15), inset -2px -2px 4px var(--neu-light);
+  transform: translateY(0);
+}
+
+/* ── Muted/Secondary Buttons ── */
+button[class*="rounded"][class*="bg-muted"],
+button[class*="rounded"][class*="hover:bg-muted"] {
+  transition: box-shadow 0.2s ease;
+}
+
+button[class*="rounded"][class*="bg-muted"]:hover,
+button[class*="rounded"][class*="hover:bg-muted"]:hover {
+  box-shadow: 3px 3px 6px var(--neu-dark), -3px -3px 6px var(--neu-light);
+}
+
+/* ── Input Fields (inset neumorphic) ── */
+input[class*="rounded"],
+textarea[class*="rounded"],
+select[class*="rounded"] {
+  box-shadow: inset 2px 2px 4px var(--neu-dark), inset -2px -2px 4px var(--neu-light);
+  border-color: transparent !important;
+  transition: box-shadow 0.2s ease;
+}
+
+input[class*="rounded"]:focus,
+textarea[class*="rounded"]:focus,
+select[class*="rounded"]:focus {
+  box-shadow: inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light),
+    0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+/* ── Scroll-to-Top Button ── */
+#scroll-to-top-btn {
+  box-shadow: 4px 4px 8px var(--neu-dark), -4px -4px 8px var(--neu-light);
+}
+
+#scroll-to-top-btn:hover {
+  box-shadow: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+}
+
+#scroll-to-top-btn:active {
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.15), inset -2px -2px 4px var(--neu-light);
+}
+
+/* ── Dropdown / Popover ── */
+div[class*="absolute"][class*="rounded"][class*="bg-card"][class*="shadow"] {
+  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light) !important;
+}
+
+/* ── Table rows on hover ── */
+tr:hover td {
+  transition: background-color 0.2s ease;
 }
