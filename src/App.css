@@ -1,0 +1,77 @@
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  color: white;
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.card {
+  background: #1f2937;
+  padding: 30px;
+  border-radius: 12px;
+  width: 450px;
+  text-align: center;
+  box-shadow: 0px 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+h2 {
+  margin-bottom: 20px;
+}
+
+.button-group {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.speak-btn {
+  background: #2563eb;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.speak-btn:hover {
+  background: #1d4ed8;
+}
+
+.stop-btn {
+  background: #dc2626;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.stop-btn:hover {
+  background: #b91c1c;
+}
+
+.chat-box {
+  background: #111827;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: left;
+  min-height: 120px;
+}
+
+.listening {
+  color: #22c55e;
+}
+
+.loading {
+  color: #facc15;
+}
