@@ -1,0 +1,46 @@
+{
+  "Myocardial Infarction": {
+    "code": "I21.9",
+    "description": "Acute myocardial infarction, unspecified"
+  },
+  "Angina": {
+    "code": "I20.9",
+    "description": "Angina pectoris, unspecified"
+  },
+  "Stroke": {
+    "code": "I63.9",
+    "description": "Cerebral infarction, unspecified"
+  },
+  "Hypertension": {
+    "code": "I10",
+    "description": "Essential (primary) hypertension"
+  },
+  "Type 2 Diabetes": {
+    "code": "E11.9",
+    "description": "Type 2 diabetes mellitus without complications"
+  },
+  "Asthma": {
+    "code": "J45.909",
+    "description": "Unspecified asthma"
+  },
+  "Pneumonia": {
+    "code": "J18.9",
+    "description": "Pneumonia, unspecified organism"
+  },
+  "Viral Fever": {
+    "code": "B34.9",
+    "description": "Viral infection, unspecified"
+  },
+  "Migraine": {
+    "code": "G43.9",
+    "description": "Migraine, unspecified"
+  },
+  "Gastroenteritis": {
+    "code": "K52.9",
+    "description": "Noninfective gastroenteritis"
+  },
+  "GERD": {
+    "code": "K21.9",
+    "description": "Gastro-esophageal reflux disease without esophagitis"
+  }
+}
