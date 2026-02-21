@@ -49,7 +49,7 @@ const NewConsultation = () => {
 
   return (
     <DashboardLayout sidebarItems={sidebarItems} title="New Consultation" subtitle="AI-Assisted Clinical Session">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* LEFT - Live Consultation */}
         <div className="panel flex flex-col">
           <div className="panel-header flex items-center justify-between">
@@ -65,19 +65,18 @@ const NewConsultation = () => {
             <div className="flex flex-col items-center py-6">
               <button
                 onClick={() => setIsRecording(!isRecording)}
-                className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  isRecording
+                className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
                     ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-110"
                     : "bg-primary/10 text-primary hover:bg-primary/20"
-                }`}
+                  }`}
               >
                 {isRecording ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
               </button>
 
               {isRecording && (
                 <div className="flex items-end gap-1 mt-4 h-8">
-                  {[1,2,3,4,5,6,7].map(i => (
-                    <div key={i} className={`w-1 bg-primary rounded-full animate-waveform${i > 1 ? `-delay-${Math.min(i-1,4)}` : ''}`}
+                  {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                    <div key={i} className={`w-1 bg-primary rounded-full animate-waveform${i > 1 ? `-delay-${Math.min(i - 1, 4)}` : ''}`}
                       style={{ animationDelay: `${i * 0.08}s`, height: `${8 + Math.random() * 16}px` }} />
                   ))}
                 </div>
@@ -92,9 +91,8 @@ const NewConsultation = () => {
             <div className="flex-1 space-y-3 max-h-80 overflow-y-auto">
               {transcriptLines.map((line, i) => (
                 <div key={i} className="flex gap-2">
-                  <span className={`badge-status flex-shrink-0 mt-0.5 ${
-                    line.speaker === "Doctor" ? "bg-primary/10 text-primary" : "bg-foreground/10 text-foreground"
-                  }`}>
+                  <span className={`badge-status flex-shrink-0 mt-0.5 ${line.speaker === "Doctor" ? "bg-primary/10 text-primary" : "bg-foreground/10 text-foreground"
+                    }`}>
                     {line.speaker}
                   </span>
                   <p className="text-sm text-foreground">{line.text}</p>
@@ -219,8 +217,8 @@ const NewConsultation = () => {
             <div className="bg-secondary rounded-xl p-4">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Patient-Friendly Summary</h4>
               <p className="text-sm text-foreground leading-relaxed">
-                Your blood pressure is higher than normal, which is causing your headaches and dizziness. 
-                We're adjusting your medication and adding a new one to help bring it down. 
+                Your blood pressure is higher than normal, which is causing your headaches and dizziness.
+                We're adjusting your medication and adding a new one to help bring it down.
                 It's important to check your blood pressure at home twice a day and come back in 2 days.
               </p>
               <button className="mt-3 text-xs font-medium text-primary hover:underline flex items-center gap-1">

@@ -41,15 +41,15 @@ const confidenceTrend = [
 const AIInsights = () => {
   return (
     <DashboardLayout sidebarItems={sidebarItems} title="AI Insights" subtitle="AI-powered clinical analytics and recommendations">
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <StatsCard label="AI Accuracy Rate" value="94%" icon={Target} trend="+2% this month" trendUp />
           <StatsCard label="Insights Generated" value={127} icon={Brain} trend="This month" />
           <StatsCard label="Critical Alerts" value={3} icon={AlertTriangle} trend="Needs review" />
           <StatsCard label="Patients Analyzed" value={186} icon={Zap} trend="+24 this week" trendUp />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           <div className="panel">
             <div className="panel-header flex items-center justify-between">
               <h3 className="font-semibold text-foreground">Recent AI Insights</h3>
@@ -58,12 +58,11 @@ const AIInsights = () => {
             <div className="panel-body space-y-3 max-h-[480px] overflow-y-auto">
               {recentInsights.map((insight, i) => (
                 <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-border hover:bg-muted/30 transition-colors">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    insight.type === "alert" ? "bg-primary/10" : insight.type === "trend" ? "bg-accent/10" : "bg-[hsl(var(--badge-completed))]/10"
-                  }`}>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${insight.type === "alert" ? "bg-primary/10" : insight.type === "trend" ? "bg-accent/10" : "bg-[hsl(var(--badge-completed))]/10"
+                    }`}>
                     {insight.type === "alert" ? <AlertTriangle className="w-4 h-4 text-primary" /> :
-                     insight.type === "trend" ? <TrendingUp className="w-4 h-4 text-accent" /> :
-                     <CheckCircle className="w-4 h-4 text-[hsl(var(--badge-completed))]" />}
+                      insight.type === "trend" ? <TrendingUp className="w-4 h-4 text-accent" /> :
+                        <CheckCircle className="w-4 h-4 text-[hsl(var(--badge-completed))]" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
@@ -101,7 +100,7 @@ const AIInsights = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           <div className="panel">
             <div className="panel-header flex items-center justify-between">
               {/* <h3 className="font-semibold text-foreground">AI Confidence Trend (4 Weeks)</h3> */}
@@ -136,11 +135,10 @@ const AIInsights = () => {
                 { title: "Lab Results Pending", desc: "12 patients have pending lab results that may affect diagnoses.", priority: "Low" },
               ].map((rec, i) => (
                 <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-secondary">
-                  <div className={`px-2 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 mt-0.5 ${
-                    rec.priority === "High" ? "bg-primary/10 text-primary" :
-                    rec.priority === "Medium" ? "bg-accent/10 text-accent" :
-                    "bg-muted text-muted-foreground"
-                  }`}>
+                  <div className={`px-2 py-0.5 rounded text-[10px] font-semibold flex-shrink-0 mt-0.5 ${rec.priority === "High" ? "bg-primary/10 text-primary" :
+                      rec.priority === "Medium" ? "bg-accent/10 text-accent" :
+                        "bg-muted text-muted-foreground"
+                    }`}>
                     {rec.priority}
                   </div>
                   <div>

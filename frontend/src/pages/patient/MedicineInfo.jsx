@@ -86,7 +86,7 @@ const MedicineInfo = () => {
 
   return (
     <DashboardLayout sidebarItems={sidebarItems} title="Medicine Info" subtitle="Upload a photo of your medicine to get detailed information">
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div className="panel">
           <div className="panel-header flex items-center justify-between">
             <h3 className="font-semibold text-foreground">Upload Medicine Photo</h3>
@@ -94,7 +94,7 @@ const MedicineInfo = () => {
           </div>
           <div className="panel-body">
             {!uploadedImage ? (
-              <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all">
+              <label className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all">
                 <Upload className="w-10 h-10 text-muted-foreground mb-3" />
                 <p className="text-sm font-medium text-foreground">Click to upload or drag & drop</p>
                 <p className="text-xs text-muted-foreground mt-1">Take a clear photo of the medicine packaging, label, or tablet</p>
@@ -133,7 +133,7 @@ const MedicineInfo = () => {
         </div>
 
         {result && (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="panel">
               <div className="panel-body flex items-start gap-4">
                 <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -151,7 +151,7 @@ const MedicineInfo = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="panel">
                 <div className="panel-header flex items-center gap-2">
                   <Info className="w-4 h-4 text-primary" />

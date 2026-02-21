@@ -35,9 +35,9 @@ const AdminDashboard = () => {
 
   return (
     <DashboardLayout sidebarItems={sidebarItems} title="System Administration Panel" subtitle="Manage the CavistaMed AI platform">
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4">
           <StatsCard label="Total Doctors" value={48} icon={Stethoscope} trend="+2 this month" trendUp />
           <StatsCard label="Total Patients" value="2,847" icon={Users} trend="+124 this week" trendUp />
           <StatsCard label="Total Consultations" value="12,493" icon={Activity} trend="+89 today" trendUp />
@@ -48,8 +48,8 @@ const AdminDashboard = () => {
         {/* Manage Doctors */}
         <div className="panel">
           <div className="panel-header flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <h3 className="font-semibold text-foreground">Manage Doctors</h3>
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            <h3 className="font-semibold text-foreground text-sm sm:text-base">Manage Doctors</h3>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-initial">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
@@ -60,13 +60,37 @@ const AdminDashboard = () => {
                   className="pl-9 pr-4 py-2 w-full sm:w-64 rounded-xl border border-input bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary transition-all"
                 />
               </div>
-              <button className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
+              <button className="w-full sm:w-auto px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
                 <Plus className="w-4 h-4" /> Add Doctor
               </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Mobile card layout */}
+          <div className="sm:hidden panel-body space-y-3">
+            {filteredDoctors.map((doc) => (
+              <div key={doc.id} className="p-3 rounded-xl border border-border">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{doc.name}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono">{doc.id}</p>
+                  </div>
+                  <StatusBadge status={doc.status} />
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs text-muted-foreground">{doc.specialty}</p>
+                  <p className="text-xs text-foreground">{doc.patients} patients</p>
+                </div>
+                <div className="flex gap-3 mt-3 pt-2 border-t border-border">
+                  <button className="text-xs font-medium text-primary hover:underline">Edit</button>
+                  <button className="text-xs font-medium text-muted-foreground hover:underline">Disable</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
@@ -109,7 +133,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Analytics Preview */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           <div className="panel">
             <div className="panel-header">
               <h3 className="font-semibold text-foreground">Diagnosis Distribution</h3>

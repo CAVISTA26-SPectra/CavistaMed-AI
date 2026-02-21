@@ -24,16 +24,16 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-secondary flex items-center justify-center p-4">
+    <div className="min-h-screen bg-secondary flex items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Activity className="w-6 h-6 text-primary-foreground" />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="inline-flex items-center gap-2 mb-3 sm:mb-4">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary flex items-center justify-center">
+              <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
             </div>
             <div className="text-left">
-              <h1 className="text-xl font-bold text-foreground">CavistaMed AI</h1>
-              <p className="text-xs text-muted-foreground">AI Clinical Co-Pilot</p>
+              <h1 className="text-lg sm:text-xl font-bold text-foreground">CavistaMed AI</h1>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">AI Clinical Co-Pilot</p>
             </div>
           </div>
         </div>
@@ -52,11 +52,10 @@ const Login = () => {
                   key={role}
                   type="button"
                   onClick={() => setSelectedRole(role)}
-                  className={`p-3 rounded-xl border-2 transition-all duration-200 text-center ${
-                    selectedRole === role
+                  className={`p-3 rounded-xl border-2 transition-all duration-200 text-center ${selectedRole === role
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-muted-foreground/30"
-                  }`}
+                    }`}
                 >
                   <Icon className={`w-5 h-5 mx-auto mb-1 ${selectedRole === role ? "text-primary" : "text-muted-foreground"}`} />
                   <p className={`text-xs font-medium ${selectedRole === role ? "text-primary" : "text-foreground"}`}>{label}</p>

@@ -28,9 +28,9 @@ const DoctorDashboard = () => {
 
   return (
     <DashboardLayout sidebarItems={sidebarItems} title="Doctor Clinical Workspace" subtitle="Welcome back, Dr. James Carter">
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <StatsCard label="Total Patients Today" value={24} icon={UserCheck} trend="+3 from yesterday" trendUp />
           <StatsCard label="Active Consultations" value={3} icon={Stethoscope} trend="2 pending review" />
           <StatsCard label="AI Alerts" value={5} icon={AlertTriangle} trend="1 critical" />
@@ -39,14 +39,14 @@ const DoctorDashboard = () => {
 
         {/* Quick action */}
         <div className="panel">
-          <div className="panel-body flex items-center justify-between">
+          <div className="panel-body flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <h3 className="font-semibold text-foreground">Start New Consultation</h3>
-              <p className="text-sm text-muted-foreground mt-1">Begin an AI-assisted consultation session</p>
+              <h3 className="font-semibold text-foreground text-sm sm:text-base">Start New Consultation</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Begin an AI-assisted consultation session</p>
             </div>
             <button
               onClick={() => navigate("/doctor/consultation")}
-              className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
+              className="w-full sm:w-auto px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
             >
               New Consultation
             </button>
@@ -56,9 +56,28 @@ const DoctorDashboard = () => {
         {/* Recent diagnoses */}
         <div className="panel">
           <div className="panel-header">
-            <h3 className="font-semibold text-foreground">Recent Diagnoses</h3>
+            <h3 className="font-semibold text-foreground text-sm sm:text-base">Recent Diagnoses</h3>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile card layout */}
+          <div className="sm:hidden panel-body space-y-3">
+            {recentDiagnoses.map((d, i) => (
+              <div key={i} className="p-3 rounded-xl border border-border hover:bg-muted/30 transition-colors">
+                <div className="flex items-start justify-between mb-2">
+                  <p className="text-sm font-medium text-foreground">{d.patient}</p>
+                  <StatusBadge status={d.status} />
+                </div>
+                <p className="text-xs text-muted-foreground">{d.diagnosis}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-mono rounded-lg">{d.icd}</span>
+                  <span className="text-[10px] text-muted-foreground">{d.time}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table layout */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">

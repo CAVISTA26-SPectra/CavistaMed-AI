@@ -66,6 +66,8 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -75,7 +77,7 @@
 
 @layer components {
   .stat-card {
-    @apply bg-card rounded-xl p-6 shadow-sm border border-border relative overflow-hidden;
+    @apply bg-card rounded-xl shadow-sm border border-border relative overflow-hidden;
   }
 
   .stat-card::before {
@@ -108,11 +110,23 @@
   }
 
   .panel-header {
-    @apply px-6 py-4 border-b border-border;
+    @apply px-4 py-3 border-b border-border;
+  }
+
+  @screen sm {
+    .panel-header {
+      @apply px-6 py-4;
+    }
   }
 
   .panel-body {
-    @apply p-6;
+    @apply p-4;
+  }
+
+  @screen sm {
+    .panel-body {
+      @apply p-6;
+    }
   }
 
   .alert-banner {
