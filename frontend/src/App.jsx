@@ -17,14 +17,19 @@ import ScrollToTop from "@/components/shared/ScrollToTop";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children, allowedRole }) => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
   if (!user) return <Navigate to="/" replace />;
   if (user.role !== allowedRole) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
 const AppRoutes = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <Routes>

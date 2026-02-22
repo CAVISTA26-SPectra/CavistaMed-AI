@@ -3,3 +3,7 @@ uvicorn
 python-multipart
 faster-whisper
 torch
+pymongo
+python-jose
+passlib[bcrypt]
+email-validator

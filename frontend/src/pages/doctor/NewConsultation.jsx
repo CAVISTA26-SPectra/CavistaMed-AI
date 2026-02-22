@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { transcribeAudio, processClinicalData } from "@/services/api";
+import { transcribeAudio, processClinicalData, extractClinicalEntities, saveConsultationRecord } from "@/services/api";
 import {
   LayoutDashboard, FilePlus, Users, ClipboardList, Brain, Settings,
   Mic, MicOff, FileText, Download, Send, ChevronDown, ChevronRight,
@@ -17,43 +17,224 @@ const sidebarItems = [
   { label: "Settings", path: "/doctor/settings", icon: Settings },
 ];
 
-const emrSections = [
-  { key: "complaint", title: "Chief Complaint", icon: Stethoscope, content: "Patient presents with persistent headache and dizziness for 3 days. Pain described as frontal pressure, severity 7/10." },
-  { key: "hpi", title: "History of Present Illness", icon: Clock, content: "Onset 3 days ago, progressively worsening. Associated with visual disturbances and intermittent dizziness. No prior history of migraines. Patient reports elevated home BP readings (~155/90)." },
-  { key: "pmh", title: "Past Medical History", icon: FileText, content: "• Hypertension — diagnosed 2019, controlled with Lisinopril 10mg daily\n• Type 2 Diabetes — HbA1c 6.8%, managed with Metformin\n• No surgical history" },
-  { key: "medications", title: "Current Medications", icon: Pill, content: "1. Lisinopril 10mg — once daily (antihypertensive)\n2. Aspirin 81mg — once daily (antiplatelet)\n3. Metformin 500mg — twice daily (antidiabetic)" },
-  { key: "allergies", title: "Allergies", icon: AlertTriangle, content: "NKDA (No Known Drug Allergies)" },
-  { key: "vitals", title: "Vital Signs", icon: Activity, content: "BP: 158/95 mmHg  |  HR: 82 bpm  |  Temp: 98.6°F  |  SpO2: 98%  |  RR: 16 breaths/min  |  Weight: 82 kg" },
-  { key: "assessment", title: "Clinical Assessment", icon: Brain, content: "Hypertensive urgency with secondary headache. Elevated blood pressure requires immediate pharmacological management. Risk of hypertensive emergency if left uncontrolled." },
-  { key: "plan", title: "Treatment Plan", icon: CheckCircle, content: "1. Increase Lisinopril to 20mg once daily\n2. Initiate Amlodipine 5mg once daily\n3. Home BP monitoring — twice daily log\n4. Follow-up in 48 hours for BP reassessment\n5. Lifestyle modifications: DASH diet, reduce sodium, aerobic exercise 30 min/day" },
+const defaultEmrSections = [
+  { key: "complaint", title: "Chief Complaint", icon: Stethoscope, content: "Not generated yet" },
+  { key: "hpi", title: "History of Present Illness", icon: Clock, content: "Not generated yet" },
+  { key: "pmh", title: "Past Medical History", icon: FileText, content: "Not generated yet" },
+  { key: "medications", title: "Current Medications", icon: Pill, content: "Not generated yet" },
+  { key: "allergies", title: "Allergies", icon: AlertTriangle, content: "Not generated yet" },
+  { key: "vitals", title: "Vital Signs", icon: Activity, content: "Not generated yet" },
+  { key: "assessment", title: "Clinical Assessment", icon: Brain, content: "Not generated yet" },
+  { key: "plan", title: "Treatment Plan", icon: CheckCircle, content: "Not generated yet" },
 ];
 
-const diagnoses = [
-  { name: "Hypertensive Urgency", confidence: 92, icd: "I16.0", severity: "high" },
-  { name: "Tension-Type Headache", confidence: 78, icd: "G44.2", severity: "medium" },
-  { name: "Migraine without Aura", confidence: 34, icd: "G43.0", severity: "low" },
-];
+const defaultDiagnoses = [];
 
-const treatments = [
-  { text: "Increase antihypertensive medication dosage", type: "Medication" },
-  { text: "Add calcium channel blocker (Amlodipine 5mg)", type: "Medication" },
-  { text: "Daily blood pressure monitoring at home", type: "Monitoring" },
-  { text: "Follow-up appointment within 48 hours", type: "Follow-up" },
-  { text: "Lifestyle modifications counseling (DASH diet)", type: "Counseling" },
-];
+const defaultTreatments = [];
+
+const uniqueItems = (items) => [...new Set((items || []).map((item) => String(item).trim()).filter(Boolean))];
+
+const splitConditions = (value) => value
+  .split(/,| and /i)
+  .map((part) => part.trim())
+  .filter(Boolean);
+
+const formatList = (items, empty = "Not documented") => (
+  items && items.length ? items.map((item) => `• ${item}`).join("\n") : empty
+);
+
+const toTitle = (value) => value
+  .split(" ")
+  .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+  .join(" ");
+
+const extractClinicalDataFromTranscript = (lines) => {
+  const transcriptText = lines.map((line) => line.text).join(" ").trim();
+  const normalized = transcriptText.toLowerCase();
+
+  const symptomKeywords = [
+    "chest pain", "sweating", "nausea", "weakness", "facial droop", "slurred speech",
+    "headache", "dizziness", "frequent urination", "excessive thirst", "wheezing",
+    "shortness of breath", "fever", "cough", "body ache", "fatigue", "sensitivity to light",
+    "diarrhea", "vomiting", "abdominal pain", "burning sensation", "heartburn", "acid reflux",
+    "high blood pressure", "blurred vision", "chills", "palpitations"
+  ];
+
+  const historyKeywords = [
+    "hypertension", "high blood pressure", "diabetes", "asthma", "stroke", "heart disease",
+    "kidney disease", "thyroid", "migraine"
+  ];
+  const medicationKeywords = [
+    "lisinopril", "amlodipine", "metformin", "aspirin", "ibuprofen", "omeprazole", "albuterol", "paracetamol"
+  ];
+
+  const symptoms = symptomKeywords.filter((keyword) => normalized.includes(keyword));
+  const history = [...historyKeywords.filter((keyword) => normalized.includes(keyword))];
+
+  const historyPatterns = [
+    /history of ([a-z0-9,\-\s]+)/gi,
+    /known case of ([a-z0-9,\-\s]+)/gi,
+    /diagnosed with ([a-z0-9,\-\s]+)/gi,
+  ];
+  historyPatterns.forEach((pattern) => {
+    const matches = transcriptText.matchAll(pattern);
+    for (const match of matches) {
+      const captured = match?.[1];
+      if (captured) {
+        splitConditions(captured).forEach((condition) => history.push(condition.toLowerCase()));
+      }
+    }
+  });
+
+  const medications = [];
+  const medicationRegex = /(lisinopril|amlodipine|metformin|aspirin|ibuprofen|omeprazole|albuterol|paracetamol|acetaminophen|nitroglycerin|ondansetron)(?:\s+(\d+(?:\.\d+)?)\s*(mg|mcg|g|ml))?/gi;
+  for (const match of transcriptText.matchAll(medicationRegex)) {
+    const name = toTitle((match[1] || "").toLowerCase());
+    const dose = match[2] && match[3] ? ` ${match[2]}${match[3]}` : "";
+    medications.push(`${name}${dose}`.trim());
+  }
+  medicationKeywords
+    .filter((keyword) => normalized.includes(keyword))
+    .forEach((keyword) => medications.push(toTitle(keyword)));
+
+  const durationMatch = transcriptText.match(/\b(\d+\s*(?:day|days|week|weeks|month|months|hour|hours))\b/i);
+  const severityMatch = transcriptText.match(/\b(\d{1,2}\s*(?:\/|out of)\s*10)\b/i);
+  const bpMatch = transcriptText.match(/\b(\d{2,3})\s*(?:\/|over)\s*(\d{2,3})\b/i);
+  const hrMatch = transcriptText.match(/(?:heart rate|hr|pulse)\s*(?:is|of|:)?\s*(\d{2,3})\b/i);
+  const tempMatch = transcriptText.match(/(?:temp(?:erature)?)\s*(?:is|of|:)?\s*(\d{2,3}(?:\.\d+)?)\b/i);
+  const spo2Match = transcriptText.match(/(?:spo2|oxygen saturation)\s*(?:is|of|:)?\s*(\d{2,3})\b/i);
+  const rrMatch = transcriptText.match(/(?:respiratory rate|rr)\s*(?:is|of|:)?\s*(\d{1,2})\b/i);
+  const weightMatch = transcriptText.match(/(?:weight)\s*(?:is|of|:)?\s*(\d{2,3}(?:\.\d+)?)\s*(kg|kilograms|lbs|pounds)?\b/i);
+
+  const allergies = [];
+  if (normalized.includes("nkda") || normalized.includes("no known drug allergies")) {
+    allergies.push("NKDA");
+  }
+  const allergyMatch = transcriptText.match(/allergic to ([a-z0-9,\s-]+)/i);
+  if (allergyMatch?.[1]) {
+    splitConditions(allergyMatch[1]).forEach((item) => allergies.push(item));
+  }
+
+  const vitals = {};
+  if (bpMatch) {
+    vitals.blood_pressure = `${bpMatch[1]}/${bpMatch[2]}`;
+    vitals.systolic_bp = Number(bpMatch[1]);
+    vitals.diastolic_bp = Number(bpMatch[2]);
+  }
+  if (hrMatch) {
+    vitals.heart_rate = Number(hrMatch[1]);
+  }
+  if (tempMatch) {
+    vitals.temperature = Number(tempMatch[1]);
+  }
+  if (spo2Match) {
+    vitals.SpO2 = Number(spo2Match[1]);
+  }
+  if (rrMatch) {
+    vitals.respiratory_rate = Number(rrMatch[1]);
+  }
+  if (weightMatch) {
+    const unit = weightMatch[2] ? ` ${weightMatch[2]}` : "";
+    vitals.weight = `${weightMatch[1]}${unit}`.trim();
+  }
+
+  if (normalized.includes("high blood pressure") && !history.includes("high blood pressure")) {
+    history.push("high blood pressure");
+  }
+
+  const finalSymptoms = uniqueItems(symptoms);
+  const finalHistory = uniqueItems(history);
+  const finalMedications = uniqueItems(medications);
+  const finalAllergies = uniqueItems(allergies);
+
+  return {
+    transcriptText,
+    clinicalData: {
+      symptoms: finalSymptoms,
+      duration: durationMatch ? durationMatch[1] : "Not specified",
+      severity: severityMatch ? severityMatch[1].replace(/\s+/g, "") : "Not specified",
+      vitals,
+      history: finalHistory,
+      medications: finalMedications,
+      allergies: finalAllergies,
+    },
+  };
+};
+
+const createMandatoryEmrReportText = (report) => {
+  if (!report) return "";
+
+  const lines = [
+    "CavistaMed AI - EMR Report",
+    `Generated On: ${new Date(report.generatedAt).toLocaleString()}`,
+    "",
+    "1. Chief Complaint",
+    report.chiefComplaint || "Not documented",
+    "",
+    "2. History of Present Illness",
+    report.hpi || "Not documented",
+    "",
+    "3. Past Medical History",
+    (report.pastMedicalHistory?.length ? report.pastMedicalHistory.map((item) => `- ${item}`).join("\n") : "Not documented"),
+    "",
+    "4. Current Medications",
+    (report.currentMedications?.length ? report.currentMedications.map((item) => `- ${item}`).join("\n") : "Not documented"),
+    "",
+    "5. Allergies",
+    (report.allergies?.length ? report.allergies.join(", ") : "Not documented"),
+    "",
+    "6. Vital Signs",
+    (report.vitalsSummary || "Not documented"),
+    "",
+    "7. Assessment and ICD",
+    report.assessment || "Not documented",
+    (report.diagnoses?.length ? report.diagnoses.map((d) => `- ${d.name} (${d.icd})`).join("\n") : "No mapped ICD diagnosis"),
+    "",
+    "8. Treatment Plan",
+    (report.treatmentPlan?.length ? report.treatmentPlan.map((item, index) => `${index + 1}. ${item}`).join("\n") : "Not documented"),
+    "",
+    "9. Triage",
+    `${report.triageLevel || "LOW"} - ${report.triageReason || "Routine follow-up"}`,
+  ];
+
+  return lines.join("\n");
+};
+
+const buildPatientSummaryText = (summary) => {
+  if (!summary || typeof summary !== "object") {
+    return "Summary will appear after EMR generation from transcript.";
+  }
+
+  const recommended = Array.isArray(summary.recommended_actions) ? summary.recommended_actions : [];
+  const medications = Array.isArray(summary.medications) ? summary.medications : [];
+
+  const parts = [
+    summary.what_it_means,
+    recommended.length ? `Recommended actions: ${recommended.join("; ")}.` : "",
+    medications.length ? `Medicines: ${medications.join(" ")}` : "",
+    summary.emergency_note,
+  ].filter(Boolean);
+
+  return parts.join(" ");
+};
 
 const NewConsultation = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [expandedSections, setExpandedSections] = useState(["complaint", "vitals", "assessment", "plan"]);
-  const [transcriptLines, setTranscriptLines] = useState([
-    { speaker: "Doctor", text: "Good morning. What brings you in today?" },
-    { speaker: "Patient", text: "I've been having these terrible headaches for about three days now. They won't go away." },
-    { speaker: "Doctor", text: "Can you describe the pain? Where is it located and how severe is it on a scale of 1-10?" },
-    { speaker: "Patient", text: "It's mostly in the front of my head, like a pressure. I'd say about a 7. I also feel dizzy sometimes." },
-    { speaker: "Doctor", text: "Have you been monitoring your blood pressure at home?" },
-    { speaker: "Patient", text: "Yes, it's been higher than usual. Around 155 over 90." },
-  ]);
+  const [transcriptLines, setTranscriptLines] = useState([]);
+  const [emrSections, setEmrSections] = useState(defaultEmrSections);
+  const [diagnoses, setDiagnoses] = useState(defaultDiagnoses);
+  const [treatments, setTreatments] = useState(defaultTreatments);
+  const [patientSummaryText, setPatientSummaryText] = useState(
+    "Summary will appear after EMR generation from transcript."
+  );
+  const [generatedReport, setGeneratedReport] = useState(null);
+  const [triageInfo, setTriageInfo] = useState({
+    triage_level: "LOW",
+    reasoning: "Generate EMR to view triage reasoning.",
+  });
+  const [hasLiveTranscript, setHasLiveTranscript] = useState(false);
   const [error, setError] = useState(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -139,28 +320,15 @@ const NewConsultation = () => {
       const fileType = (audioMimeTypeRef.current || "audio/webm").split(";")[0];
       const audioFile = new File([audioBlob], `recording.${extension}`, { type: fileType });
       const result = await transcribeAudio(audioFile);
-      
-      setTranscriptLines(prev => [
-        ...prev,
-        { speaker: "Patient", text: result.transcript }
-      ]);
+      const rawTranscript = typeof result.transcript === "string" ? result.transcript.trim() : "";
 
-      // Sample clinical data for demo
-      const clinicalData = {
-        symptoms: ["headache", "dizziness", "high blood pressure"],
-        duration: "3 days",
-        severity: "7/10",
-        vitals: { blood_pressure: "158/95", heart_rate: "82" },
-        history: ["hypertension", "diabetes"],
-        medications: ["Lisinopril 10mg", "Metformin 500mg"],
-        allergies: []
-      };
-
-      const pipelineResult = await processClinicalData(clinicalData);
-      
-      if (pipelineResult.status === "success") {
-        console.log("Pipeline result:", pipelineResult);
+      if (!rawTranscript) {
+        throw new Error("No speech recognized from recording. Please speak clearly and try again.");
       }
+
+      const rawLine = { speaker: "Transcript", text: rawTranscript };
+      setTranscriptLines((prev) => (hasLiveTranscript ? [...prev, rawLine] : [rawLine]));
+      setHasLiveTranscript(true);
 
     } catch (err) {
       console.error("Error processing audio:", err);
@@ -175,20 +343,153 @@ const NewConsultation = () => {
     setError(null);
 
     try {
+      if (!hasLiveTranscript || !transcriptLines.length) {
+        throw new Error("Please record and transcribe consultation before generating EMR.");
+      }
+
+      const transcriptText = transcriptLines.map((line) => line.text).join(" ").trim();
+      if (!transcriptText) {
+        throw new Error("No transcript available for EMR generation.");
+      }
+
+      let extracted = null;
+      try {
+        extracted = await extractClinicalEntities(transcriptText);
+      } catch (extractErr) {
+        console.warn("Pretrained entity extraction unavailable, using local fallback:", extractErr);
+      }
+
+      const fallback = extractClinicalDataFromTranscript(transcriptLines);
       const clinicalData = {
-        symptoms: ["headache", "dizziness"],
-        duration: "3 days",
-        severity: "7/10",
-        vitals: { blood_pressure: "158/95", heart_rate: "82" },
-        history: ["hypertension"],
-        medications: ["Lisinopril 10mg"],
-        allergies: []
+        symptoms: (extracted?.symptoms && extracted.symptoms.length ? extracted.symptoms : fallback.clinicalData.symptoms) || [],
+        duration: extracted?.duration || fallback.clinicalData.duration,
+        severity: extracted?.severity || fallback.clinicalData.severity,
+        vitals: (extracted?.vitals && Object.keys(extracted.vitals).length ? extracted.vitals : fallback.clinicalData.vitals) || {},
+        history: (extracted?.history && extracted.history.length ? extracted.history : fallback.clinicalData.history) || [],
+        medications: (extracted?.medications && extracted.medications.length ? extracted.medications : fallback.clinicalData.medications) || [],
+        allergies: (extracted?.allergies && extracted.allergies.length ? extracted.allergies : fallback.clinicalData.allergies) || [],
       };
+
+      const transcriptForReport = extracted?.transcript || transcriptText;
+      if (!clinicalData.symptoms.length) {
+        const firstSentence = transcriptForReport.split(/[.!?]/).map((s) => s.trim()).filter(Boolean)[0];
+        if (firstSentence) {
+          clinicalData.symptoms = [firstSentence.toLowerCase()];
+        } else {
+          throw new Error("No clinical details found in transcript. Please capture more consultation details.");
+        }
+      }
 
       const result = await processClinicalData(clinicalData);
       
       if (result.status === "success") {
-        console.log("EMR generated:", result);
+        const emr = result.emr || {};
+        const triage = result.triage || {};
+        const patientSummary = result.patient_summary || {};
+
+        const icdResults = Array.isArray(emr.icd_codes) ? emr.icd_codes : [];
+        const diagnosisRows = icdResults.slice(0, 3).map((item) => {
+          const confidence = Number(item.confidence || 0);
+          return {
+            name: item.diagnosis || "Unknown diagnosis",
+            confidence,
+            icd: item.icd_code || "Not Found",
+            severity: confidence >= 80 ? "high" : confidence >= 50 ? "medium" : "low",
+          };
+        });
+
+        const treatmentRows = [];
+        const treatmentPlans = Array.isArray(emr.treatment_plan) ? emr.treatment_plan : [];
+        treatmentPlans.forEach((plan) => {
+          (plan.recommended_actions || []).forEach((action) => {
+            treatmentRows.push({ text: action, type: "Action" });
+          });
+          (plan.medications || []).forEach((med) => {
+            const doseText = med.dose ? ` ${med.dose}` : "";
+            treatmentRows.push({ text: `${med.name || "Medication"}${doseText}`.trim(), type: "Medication" });
+          });
+        });
+
+        const vitals = clinicalData.vitals || {};
+        const vitalsText = [
+          vitals.blood_pressure ? `BP: ${vitals.blood_pressure} mmHg` : "",
+          vitals.heart_rate ? `HR: ${vitals.heart_rate} bpm` : "",
+          vitals.temperature ? `Temp: ${vitals.temperature}°F` : "",
+          vitals.SpO2 ? `SpO2: ${vitals.SpO2}%` : "",
+          vitals.respiratory_rate ? `RR: ${vitals.respiratory_rate} breaths/min` : "",
+          vitals.weight ? `Weight: ${vitals.weight}` : "",
+        ].filter(Boolean).join("  |  ") || "Not recorded";
+
+        setEmrSections((prev) => prev.map((section) => {
+          if (section.key === "complaint") {
+            return { ...section, content: emr.chief_complaint || clinicalData.symptoms[0] || "Not documented" };
+          }
+          if (section.key === "hpi") {
+            return { ...section, content: transcriptForReport || "No transcript available" };
+          }
+          if (section.key === "pmh") {
+            return { ...section, content: formatList(clinicalData.history, "No past history captured from transcript") };
+          }
+          if (section.key === "medications") {
+            return { ...section, content: formatList(clinicalData.medications, "No current medications captured from transcript") };
+          }
+          if (section.key === "allergies") {
+            return { ...section, content: clinicalData.allergies.length ? clinicalData.allergies.join(", ") : "NKDA / Not documented" };
+          }
+          if (section.key === "vitals") {
+            return { ...section, content: vitalsText };
+          }
+          if (section.key === "assessment") {
+            return { ...section, content: emr.assessment || triage.reasoning || "Assessment pending" };
+          }
+          if (section.key === "plan") {
+            return {
+              ...section,
+              content: treatmentRows.length
+                ? treatmentRows.map((item, index) => `${index + 1}. ${item.text} (${item.type})`).join("\n")
+                : "No treatment recommendations generated",
+            };
+          }
+          return section;
+        }));
+
+        if (diagnosisRows.length) {
+          setDiagnoses(diagnosisRows);
+        }
+        if (treatmentRows.length) {
+          setTreatments(treatmentRows);
+        }
+        setTriageInfo({
+          triage_level: triage.triage_level || "LOW",
+          reasoning: triage.reasoning || "Routine monitoring recommended.",
+        });
+        setPatientSummaryText(buildPatientSummaryText(patientSummary));
+
+        try {
+          await saveConsultationRecord({
+            patientName: "Walk-in Patient",
+            transcript: transcriptForReport,
+            clinicalData,
+            status: "completed",
+          });
+        } catch (persistErr) {
+          console.warn("Consultation generated but could not be persisted for dashboard overview:", persistErr);
+        }
+
+        setGeneratedReport({
+          generatedAt: new Date().toISOString(),
+          chiefComplaint: emr.chief_complaint || clinicalData.symptoms[0] || "",
+          hpi: transcriptForReport,
+          pastMedicalHistory: clinicalData.history || [],
+          currentMedications: clinicalData.medications || [],
+          allergies: clinicalData.allergies || [],
+          vitalsSummary: vitalsText,
+          assessment: emr.assessment || "",
+          diagnoses: diagnosisRows,
+          treatmentPlan: treatmentRows.map((item) => `${item.text} (${item.type})`),
+          triageLevel: triage.triage_level || "LOW",
+          triageReason: triage.reasoning || "Routine monitoring recommended.",
+        });
       } else {
         setError(result.error_message || "Failed to generate EMR");
       }
@@ -205,6 +506,37 @@ const NewConsultation = () => {
     if (s === "high") return "text-red-600 bg-red-50";
     if (s === "medium") return "text-amber-600 bg-amber-50";
     return "text-emerald-600 bg-emerald-50";
+  };
+
+  const topConfidence = diagnoses[0]?.confidence || 0;
+  const triageBadgeClass = triageInfo.triage_level === "HIGH"
+    ? "bg-red-50 text-red-600 border border-red-200"
+    : triageInfo.triage_level === "MEDIUM"
+      ? "bg-amber-50 text-amber-600 border border-amber-200"
+      : "bg-emerald-50 text-emerald-600 border border-emerald-200";
+  const triageHeadline = triageInfo.triage_level === "HIGH"
+    ? "High-Risk Clinical Alert"
+    : triageInfo.triage_level === "MEDIUM"
+      ? "Moderate-Risk Clinical Alert"
+      : "Routine Clinical Alert";
+
+  const downloadEmrReport = () => {
+    if (!generatedReport) {
+      setError("Generate EMR first to download the report.");
+      return;
+    }
+
+    const content = createMandatoryEmrReportText(generatedReport);
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    link.href = url;
+    link.download = `emr-report-${timestamp}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -287,18 +619,28 @@ const NewConsultation = () => {
           {/* Transcript */}
           <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-3">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Transcript</p>
-            {transcriptLines.map((line, i) => (
-              <div key={i} className="flex gap-2.5 items-start">
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold flex-shrink-0 mt-0.5 ${line.speaker === "Doctor"
-                  ? "bg-primary/10 text-primary"
-                  : "bg-slate-100 text-slate-600"
-                  }`}>
-                  {line.speaker === "Doctor" ? <Stethoscope className="w-2.5 h-2.5" /> : <User className="w-2.5 h-2.5" />}
-                  {line.speaker}
-                </span>
-                <p className="text-sm text-foreground leading-relaxed">{line.text}</p>
-              </div>
-            ))}
+            {transcriptLines.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No transcript yet. Start recording to capture consultation.</p>
+            ) : (
+              transcriptLines.map((line, i) => (
+                <div key={i} className="flex gap-2.5 items-start">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold flex-shrink-0 mt-0.5 ${line.speaker === "Doctor"
+                    ? "bg-primary/10 text-primary"
+                    : line.speaker === "Patient"
+                      ? "bg-slate-100 text-slate-600"
+                      : "bg-amber-100 text-amber-700"
+                    }`}>
+                    {line.speaker === "Doctor"
+                      ? <Stethoscope className="w-2.5 h-2.5" />
+                      : line.speaker === "Patient"
+                        ? <User className="w-2.5 h-2.5" />
+                        : <FileText className="w-2.5 h-2.5" />}
+                    {line.speaker}
+                  </span>
+                  <p className="text-sm text-foreground leading-relaxed">{line.text}</p>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Generate Button */}
@@ -320,11 +662,11 @@ const NewConsultation = () => {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-foreground">Structured EMR</h3>
-                <p className="text-[10px] text-muted-foreground">AI-generated medical record</p>
+                <p className="text-[10px] text-muted-foreground">Generated from live consultation transcript</p>
               </div>
             </div>
             <div className="flex gap-1.5">
-              <button className="px-2.5 py-1.5 text-[11px] font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors flex items-center gap-1">
+              <button onClick={downloadEmrReport} className="px-2.5 py-1.5 text-[11px] font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors flex items-center gap-1">
                 <Download className="w-3 h-3" /> PDF
               </button>
               <button className="px-2.5 py-1.5 text-[11px] font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1">
@@ -355,7 +697,8 @@ const NewConsultation = () => {
                   {isOpen && (
                     <div className="px-3.5 pb-3">
                       <textarea
-                        defaultValue={section.content}
+                        value={section.content}
+                        readOnly
                         className="w-full bg-white rounded-lg p-3 text-sm text-foreground border border-border/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 resize-none transition-all"
                         rows={section.content.split('\n').length + 1}
                       />
@@ -386,8 +729,8 @@ const NewConsultation = () => {
                 <p className="text-[10px] text-muted-foreground">Clinical decision support</p>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">
-              <Shield className="w-3 h-3" /> High Triage
+            <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold ${triageBadgeClass}`}>
+              <Shield className="w-3 h-3" /> {triageInfo.triage_level} Triage
             </span>
           </div>
 
@@ -399,8 +742,8 @@ const NewConsultation = () => {
                 <AlertTriangle className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <p className="text-sm font-bold text-red-700">Hypertensive Emergency Risk</p>
-                <p className="text-xs text-red-600 mt-0.5 leading-relaxed">BP reading exceeds urgent threshold. Immediate evaluation and management recommended.</p>
+                <p className="text-sm font-bold text-red-700">{triageHeadline}</p>
+                <p className="text-xs text-red-600 mt-0.5 leading-relaxed">{triageInfo.reasoning}</p>
               </div>
             </div>
 
@@ -410,10 +753,10 @@ const NewConsultation = () => {
                 <svg className="w-28 h-28 -rotate-90" viewBox="0 0 120 120">
                   <circle cx="60" cy="60" r="52" fill="none" stroke="hsl(var(--border))" strokeWidth="8" />
                   <circle cx="60" cy="60" r="52" fill="none" stroke="hsl(var(--primary))" strokeWidth="8"
-                    strokeDasharray={`${2 * Math.PI * 52 * 0.92} ${2 * Math.PI * 52}`} strokeLinecap="round" />
+                    strokeDasharray={`${2 * Math.PI * 52 * (topConfidence / 100)} ${2 * Math.PI * 52}`} strokeLinecap="round" />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-black text-foreground">92%</span>
+                  <span className="text-2xl font-black text-foreground">{topConfidence}%</span>
                   <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">AI Confidence</span>
                 </div>
               </div>
@@ -422,44 +765,52 @@ const NewConsultation = () => {
             {/* Top Diagnoses */}
             <div>
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Top Diagnoses</p>
-              <div className="space-y-3">
-                {diagnoses.map((d, i) => (
-                  <div key={i} className="bg-white border border-border/60 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getSeverityColor(d.severity)}`}>
-                          {i + 1}
-                        </span>
-                        <span className="text-sm font-semibold text-foreground">{d.name}</span>
+              {diagnoses.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No diagnoses yet. Generate EMR to view diagnostic output.</p>
+              ) : (
+                <div className="space-y-3">
+                  {diagnoses.map((d, i) => (
+                    <div key={i} className="bg-white border border-border/60 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getSeverityColor(d.severity)}`}>
+                            {i + 1}
+                          </span>
+                          <span className="text-sm font-semibold text-foreground">{d.name}</span>
+                        </div>
+                        <span className="text-sm font-black text-primary">{d.confidence}%</span>
                       </div>
-                      <span className="text-sm font-black text-primary">{d.confidence}%</span>
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
+                          style={{ width: `${d.confidence}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] font-mono text-muted-foreground">ICD-10 : {d.icd}</p>
                     </div>
-                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
-                        style={{ width: `${d.confidence}%` }}
-                      />
-                    </div>
-                    <p className="text-[10px] font-mono text-muted-foreground">ICD-10 : {d.icd}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Treatment Recommendations */}
             <div>
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Treatment Recommendations</p>
-              <div className="space-y-2">
-                {treatments.map((t, i) => (
-                  <div key={i} className="flex items-start gap-2.5">
-                    <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm text-foreground leading-snug">{t.text}</p>
-                      <span className="text-[10px] text-muted-foreground">{t.type}</span>
+              {treatments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No treatment recommendations yet. Generate EMR to view plan.</p>
+              ) : (
+                <div className="space-y-2">
+                  {treatments.map((t, i) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm text-foreground leading-snug">{t.text}</p>
+                        <span className="text-[10px] text-muted-foreground">{t.type}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Patient-Friendly Summary */}
@@ -469,9 +820,7 @@ const NewConsultation = () => {
                 <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Patient-Friendly Summary</p>
               </div>
               <p className="text-sm text-slate-700 leading-relaxed">
-                Your blood pressure is higher than normal, which is causing your headaches and dizziness.
-                We're adjusting your medication and adding a new one to help bring it down.
-                It's important to check your blood pressure at home twice a day and come back in 2 days.
+                {patientSummaryText}
               </p>
               <button className="mt-3 text-xs font-semibold text-primary hover:underline flex items-center gap-1">
                 <Download className="w-3 h-3" /> Download Patient Summary
