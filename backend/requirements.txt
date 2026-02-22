@@ -5,5 +5,7 @@ faster-whisper
 torch
 pymongo
 python-jose
-passlib[bcrypt]
+passlib[argon2]
+argon2-cffi
 email-validator
+python-dotenv

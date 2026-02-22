@@ -42,5 +42,74 @@
   "GERD": {
     "code": "K21.9",
     "description": "Gastro-esophageal reflux disease without esophagitis"
+  },
+
+  "Upper Respiratory Infection": {
+    "code": "J06.9",
+    "description": "Acute upper respiratory infection, unspecified"
+  },
+  "Sinusitis": {
+    "code": "J01.90",
+    "description": "Acute sinusitis, unspecified"
+  },
+  "Bronchitis": {
+    "code": "J20.9",
+    "description": "Acute bronchitis, unspecified"
+  },
+  "COVID-19": {
+    "code": "U07.1",
+    "description": "COVID-19, virus identified"
+  },
+  "Dengue": {
+    "code": "A90",
+    "description": "Dengue fever"
+  },
+  "Malaria": {
+    "code": "B54",
+    "description": "Unspecified malaria"
+  },
+  "Anemia": {
+    "code": "D64.9",
+    "description": "Anemia, unspecified"
+  },
+  "Hypothyroidism": {
+    "code": "E03.9",
+    "description": "Hypothyroidism, unspecified"
+  },
+  "Hyperthyroidism": {
+    "code": "E05.9",
+    "description": "Thyrotoxicosis, unspecified"
+  },
+  "Chronic Kidney Disease": {
+    "code": "N18.9",
+    "description": "Chronic kidney disease, unspecified"
+  },
+  "Urinary Tract Infection": {
+    "code": "N39.0",
+    "description": "Urinary tract infection, site not specified"
+  },
+  "Acute Gastritis": {
+    "code": "K29.00",
+    "description": "Acute gastritis without bleeding"
+  },
+  "Peptic Ulcer Disease": {
+    "code": "K27.9",
+    "description": "Peptic ulcer, site unspecified"
+  },
+  "Depression": {
+    "code": "F32.9",
+    "description": "Major depressive disorder, single episode, unspecified"
+  },
+  "Anxiety Disorder": {
+    "code": "F41.9",
+    "description": "Anxiety disorder, unspecified"
+  },
+  "Osteoarthritis": {
+    "code": "M19.90",
+    "description": "Osteoarthritis, unspecified site"
+  },
+  "Back Pain": {
+    "code": "M54.9",
+    "description": "Dorsalgia, unspecified"
   }
 }

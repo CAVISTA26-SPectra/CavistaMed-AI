@@ -4,6 +4,20 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+async function getErrorMessage(response, fallbackMessage) {
+  try {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      return data.detail || data.message || fallbackMessage;
+    }
+    const text = await response.text();
+    return text || fallbackMessage;
+  } catch {
+    return fallbackMessage;
+  }
+}
+
 function withAuthHeaders(token, headers = {}) {
   if (!token) return headers;
   return {
@@ -76,8 +90,7 @@ export async function transcribeAudio(audioFile, startingSpeaker = 'Doctor') {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Transcription failed');
+    throw new Error(await getErrorMessage(response, 'Transcription failed'));
   }
 
   return response.json();
@@ -98,8 +111,7 @@ export async function processClinicalData(clinicalData) {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Pipeline processing failed');
+    throw new Error(await getErrorMessage(response, 'Pipeline processing failed'));
   }
 
   return response.json();
@@ -120,8 +132,7 @@ export async function extractClinicalEntities(transcript) {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Entity extraction failed');
+    throw new Error(await getErrorMessage(response, 'Entity extraction failed'));
   }
 
   return response.json();
@@ -153,8 +164,7 @@ export async function analyzeConsultation(audioFile = null, transcript = null, c
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Analysis failed');
+    throw new Error(await getErrorMessage(response, 'Analysis failed'));
   }
 
   return response.json();
@@ -169,7 +179,7 @@ export async function checkHealth() {
   return response.json();
 }
 
-export async function saveConsultationRecord({ patientName, transcript, clinicalData, status = 'completed' }) {
+export async function saveConsultationRecord({ patientName, transcript, clinicalData, status = 'completed', sessionId = '' }) {
   const response = await fetch(`${API_BASE_URL}/consultations/record`, {
     method: 'POST',
     headers: {
@@ -180,24 +190,127 @@ export async function saveConsultationRecord({ patientName, transcript, clinical
       transcript,
       clinical_data: clinicalData,
       status,
+      session_id: sessionId,
     }),
   });
 
-  const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.detail || 'Failed to save consultation record');
+    throw new Error(await getErrorMessage(response, 'Failed to save consultation record'));
   }
+
+  const data = await response.json();
+
+  return data;
+}
+
+export async function startConsultationSession({ patientName, token }) {
+  const response = await fetch(`${API_BASE_URL}/consultations/start`, {
+    method: 'POST',
+    headers: withAuthHeaders(token, {
+      'Content-Type': 'application/json',
+    }),
+    body: JSON.stringify({ patient_name: patientName }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, 'Failed to start consultation session'));
+  }
+
+  const data = await response.json();
+
+  return data;
+}
+
+export async function searchPatientsByName({ query, token }) {
+  const params = new URLSearchParams({ query: query || '' });
+  const response = await fetch(`${API_BASE_URL}/patients/search?${params.toString()}`, {
+    headers: withAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, 'Failed to search patients'));
+  }
+
+  const data = await response.json();
 
   return data;
 }
 
 export async function fetchDoctorDashboardOverview() {
   const response = await fetch(`${API_BASE_URL}/dashboard/doctor-overview`);
-  const data = await response.json();
-
   if (!response.ok) {
-    throw new Error(data.detail || 'Failed to fetch doctor dashboard overview');
+    throw new Error(await getErrorMessage(response, 'Failed to fetch doctor dashboard overview'));
   }
 
+  const data = await response.json();
+
   return data;
+}
+
+export async function generateEmrFromTranscript({ transcript, patientName = '', sessionId = '', persistRecord = true, status = 'completed' }) {
+  const response = await fetch(`${API_BASE_URL}/emr/from-transcript`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      transcript,
+      patient_name: patientName,
+      session_id: sessionId,
+      persist_record: persistRecord,
+      status,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, 'Failed to generate EMR from transcript'));
+  }
+
+  return response.json();
+}
+
+export async function fetchConsultationHistory({ token, limit = 100 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit || 100) });
+  const response = await fetch(`${API_BASE_URL}/consultations/history?${params.toString()}`, {
+    headers: withAuthHeaders(token),
+  });
+
+  if (response.ok) {
+    return response.json();
+  }
+
+  if (response.status !== 404) {
+    throw new Error(await getErrorMessage(response, 'Failed to fetch consultation history'));
+  }
+
+  const dashboardResponse = await fetch(`${API_BASE_URL}/dashboard/doctor-overview`, {
+    headers: withAuthHeaders(token),
+  });
+
+  if (!dashboardResponse.ok) {
+    throw new Error(await getErrorMessage(response, 'Failed to fetch consultation history'));
+  }
+
+  const dashboardData = await dashboardResponse.json();
+  const recent = Array.isArray(dashboardData?.recent_diagnoses) ? dashboardData.recent_diagnoses : [];
+
+  const consultations = recent.map((item, index) => ({
+    id: `DASH-${index + 1}`,
+    patient: item?.patient || 'Unknown Patient',
+    diagnosis: item?.diagnosis || 'Assessment pending',
+    icd: item?.icd || 'Not Found',
+    confidence: Number(item?.confidence || 0),
+    status: item?.status || 'completed',
+    created_at: new Date().toISOString(),
+    triage_level: 'LOW',
+    clinical_data: {},
+    emr: {},
+  }));
+
+  return {
+    status: 'success',
+    consultations,
+    total: consultations.length,
+    source: 'dashboard-fallback',
+  };
 }

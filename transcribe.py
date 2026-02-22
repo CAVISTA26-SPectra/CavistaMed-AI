@@ -5,6 +5,7 @@ import tempfile
 import torch
 import os
 import re
+from functools import lru_cache
 
 app = FastAPI()
 
@@ -26,7 +27,11 @@ app.add_middleware(
 )
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-model = WhisperModel("small", device=device)
+
+
+@lru_cache(maxsize=1)
+def _get_whisper_model() -> WhisperModel:
+    return WhisperModel("small", device=device)
 
 
 CONTENT_TYPE_TO_SUFFIX = {
@@ -128,6 +133,7 @@ def transcribe_audio_bytes(
             temp_audio.write(audio_bytes)
             temp_audio_path = temp_audio.name
 
+        model = _get_whisper_model()
         segments, info = model.transcribe(temp_audio_path)
         transcript = " ".join([segment.text for segment in segments]).strip()
 

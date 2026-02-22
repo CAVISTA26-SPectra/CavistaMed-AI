@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import StatusBadge from "@/components/shared/StatusBadge";
+import { fetchConsultationHistory } from "@/services/api";
+import { useAuth } from "@/hooks/useAuth";
 import { jsPDF } from "jspdf";
 import {
   LayoutDashboard, FilePlus, Users, ClipboardList, Brain, Settings,
@@ -233,6 +235,92 @@ const getTriageDot = (level) => {
     case "LOW": return "bg-emerald-500";
     default: return "bg-gray-500";
   }
+};
+
+const formatDateTime = (isoLike) => {
+  if (!isoLike) {
+    return { date: "N/A", time: "N/A" };
+  }
+  const dt = new Date(isoLike);
+  if (Number.isNaN(dt.getTime())) {
+    return { date: "N/A", time: "N/A" };
+  }
+  return {
+    date: dt.toLocaleDateString(undefined, { month: "short", day: "2-digit", year: "numeric" }),
+    time: dt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+  };
+};
+
+const normalizeConsultationRecord = (record) => {
+  const emr = record?.emr || {};
+  const clinicalData = record?.clinical_data || {};
+  const triage = emr?.triage || {};
+  const icdEntry = Array.isArray(emr?.icd_codes) && emr.icd_codes.length > 0 ? emr.icd_codes[0] : {};
+  const vitals = emr?.vitals || clinicalData?.vitals || {};
+
+  const treatmentPlans = Array.isArray(emr?.treatment_plan) ? emr.treatment_plan : [];
+  const treatmentPlan = treatmentPlans.flatMap((plan) =>
+    (Array.isArray(plan?.recommended_actions) ? plan.recommended_actions : []).map((action) => ({
+      action,
+      type: "recommended",
+    }))
+  );
+  const medications = treatmentPlans.flatMap((plan) =>
+    (Array.isArray(plan?.medications) ? plan.medications : []).map((med) => ({
+      name: med?.name || "Medication",
+      dose: med?.dose || "N/A",
+      route: med?.route || "N/A",
+      frequency: med?.frequency || "As directed",
+      class: med?.class || "N/A",
+    }))
+  );
+  const warnings = treatmentPlans.flatMap((plan) => (Array.isArray(plan?.warnings) ? plan.warnings : []));
+
+  const triageLevel = (triage?.triage_level || record?.triage_level || "LOW").toUpperCase();
+  const triageColor = triage?.led_color || (triageLevel === "HIGH" ? "RED" : triageLevel === "MEDIUM" ? "YELLOW" : "GREEN");
+  const { date, time } = formatDateTime(record?.created_at);
+
+  const symptoms = Array.isArray(emr?.symptoms) ? emr.symptoms : (Array.isArray(clinicalData?.symptoms) ? clinicalData.symptoms : []);
+  const history = Array.isArray(emr?.history) ? emr.history : (Array.isArray(clinicalData?.history) ? clinicalData.history : []);
+  const allergies = Array.isArray(clinicalData?.allergies) ? clinicalData.allergies : [];
+  const currentMedications = Array.isArray(clinicalData?.medications) ? clinicalData.medications : [];
+
+  return {
+    id: record?.id || `CON-${Math.floor(Math.random() * 100000)}`,
+    patient: record?.patient || "Unknown Patient",
+    patientId: "N/A",
+    age: "--",
+    gender: "Unknown",
+    diagnosis: record?.diagnosis || icdEntry?.diagnosis || emr?.assessment || "Assessment pending",
+    icd: record?.icd || icdEntry?.icd_code || "Not Found",
+    icdDescription: icdEntry?.description || "No ICD description",
+    date,
+    time,
+    aiConfidence: Number(record?.confidence || icdEntry?.confidence || 0),
+    status: record?.status || "completed",
+    chiefComplaint: emr?.chief_complaint || symptoms?.[0] || "Not documented",
+    symptoms,
+    vitals: {
+      heart_rate: vitals?.heart_rate ?? "--",
+      systolic_bp: vitals?.systolic_bp ?? "--",
+      diastolic_bp: vitals?.diastolic_bp ?? "--",
+      SpO2: vitals?.SpO2 ?? "--",
+      temp: vitals?.temp || vitals?.temperature || "N/A",
+      resp_rate: vitals?.resp_rate || vitals?.respiratory_rate || "--",
+    },
+    history,
+    allergies,
+    currentMedications,
+    triageLevel,
+    triageColor,
+    triageReasoning: triage?.reasoning || "Routine monitoring recommended.",
+    redFlags: Array.isArray(triage?.detected_red_flags) ? triage.detected_red_flags : [],
+    treatmentPlan,
+    medications,
+    warnings,
+    patientSummary: emr?.patient_summary || "Summary not available.",
+    doctorNotes: record?.transcript || "No consultation transcript captured.",
+  };
 };
 
 // ── PDF Download Function ──
@@ -867,13 +955,43 @@ const EMRModal = ({ consultation, onClose }) => {
 
 // ── Main Component ──
 const ConsultationHistory = () => {
+  const { token } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [viewingEMR, setViewingEMR] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [consultationsData, setConsultationsData] = useState(consultations);
+  const [loadError, setLoadError] = useState("");
   const perPage = 6;
 
-  const filtered = consultations.filter(c =>
+  useEffect(() => {
+    let active = true;
+
+    const loadConsultationHistory = async () => {
+      if (!token) return;
+      try {
+        setLoadError("");
+        const response = await fetchConsultationHistory({ token, limit: 200 });
+        if (!active) return;
+        const records = Array.isArray(response?.consultations) ? response.consultations : [];
+        if (records.length > 0) {
+          setConsultationsData(records.map(normalizeConsultationRecord));
+        } else {
+          setConsultationsData([]);
+        }
+      } catch (err) {
+        if (!active) return;
+        setLoadError(err?.message || "Unable to load consultation history");
+      }
+    };
+
+    loadConsultationHistory();
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  const filtered = consultationsData.filter(c =>
     c.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.diagnosis.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.icd.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -883,11 +1001,17 @@ const ConsultationHistory = () => {
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
 
-  const selected = consultations.find(c => c.id === selectedDetail);
+  const selected = consultationsData.find(c => c.id === selectedDetail);
 
   return (
     <DashboardLayout sidebarItems={sidebarItems} title="Consultation History" subtitle="View and manage past consultations">
       <div className="space-y-4 sm:space-y-6">
+        {loadError ? (
+          <div className="panel">
+            <div className="panel-body py-3 text-sm text-primary">{loadError}</div>
+          </div>
+        ) : null}
+
         {/* Filters */}
         <div className="panel">
           <div className="panel-body flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -960,6 +1084,9 @@ const ConsultationHistory = () => {
                   </div>
                 </div>
               ))}
+              {!paginated.length ? (
+                <p className="text-xs text-muted-foreground">No consultation records found.</p>
+              ) : null}
             </div>
 
             {/* Desktop table layout */}
@@ -1006,6 +1133,11 @@ const ConsultationHistory = () => {
                       </td>
                     </tr>
                   ))}
+                  {!paginated.length ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 lg:px-6 py-6 text-sm text-muted-foreground">No consultation records found.</td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </table>
             </div>

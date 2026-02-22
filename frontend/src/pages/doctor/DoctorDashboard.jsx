@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import StatsCard from "@/components/shared/StatsCard";
 import StatusBadge from "@/components/shared/StatusBadge";
+import { fetchDoctorDashboardOverview } from "@/services/api";
+import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard, FilePlus, Users, ClipboardList, Brain, Settings,
   UserCheck, Stethoscope, AlertTriangle, Activity
@@ -16,26 +19,67 @@ const sidebarItems = [
   { label: "Settings", path: "/doctor/settings", icon: Settings },
 ];
 
-const recentDiagnoses = [
-  { patient: "Maria Santos", diagnosis: "Type 2 Diabetes Mellitus", icd: "E11.9", time: "10 min ago", status: "completed" },
-  { patient: "John Williams", diagnosis: "Essential Hypertension", icd: "I10", time: "25 min ago", status: "completed" },
-  { patient: "Linda Chen", diagnosis: "Acute Bronchitis", icd: "J20.9", time: "1 hr ago", status: "processing" },
-  { patient: "Robert Davis", diagnosis: "Major Depressive Disorder", icd: "F32.9", time: "2 hr ago", status: "completed" },
-];
-
 const DoctorDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [overviewError, setOverviewError] = useState("");
+  const [stats, setStats] = useState({
+    total_patients_today: 0,
+    active_consultations: 0,
+    ai_alerts: 0,
+    recent_diagnoses: 0,
+  });
+  const [recentDiagnoses, setRecentDiagnoses] = useState([]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadOverview = async () => {
+      try {
+        setOverviewError("");
+        const response = await fetchDoctorDashboardOverview();
+        if (!isActive) return;
+
+        setStats(response?.stats || {
+          total_patients_today: 0,
+          active_consultations: 0,
+          ai_alerts: 0,
+          recent_diagnoses: 0,
+        });
+        setRecentDiagnoses(Array.isArray(response?.recent_diagnoses) ? response.recent_diagnoses : []);
+      } catch (err) {
+        if (!isActive) return;
+        setOverviewError(err.message || "Unable to load dashboard overview");
+      } finally {
+        if (isActive) setLoading(false);
+      }
+    };
+
+    loadOverview();
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const subtitle = user?.name ? `Welcome back, ${user.name}` : "Welcome back";
 
   return (
-    <DashboardLayout sidebarItems={sidebarItems} title="Doctor Clinical Workspace" subtitle="Welcome back, Dr. James Carter">
+    <DashboardLayout sidebarItems={sidebarItems} title="Doctor Clinical Workspace" subtitle={subtitle}>
       <div className="space-y-4 sm:space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-          <StatsCard label="Total Patients Today" value={24} icon={UserCheck} trend="+3 from yesterday" trendUp />
-          <StatsCard label="Active Consultations" value={3} icon={Stethoscope} trend="2 pending review" />
-          <StatsCard label="AI Alerts" value={5} icon={AlertTriangle} trend="1 critical" />
-          <StatsCard label="Recent Diagnoses" value={18} icon={Activity} trend="+12% this week" trendUp />
+          <StatsCard label="Total Patients Today" value={stats.total_patients_today} icon={UserCheck} trend={loading ? "Loading..." : "Updated from live records"} trendUp={stats.total_patients_today > 0} />
+          <StatsCard label="Active Consultations" value={stats.active_consultations} icon={Stethoscope} trend="In-progress sessions" />
+          <StatsCard label="AI Alerts" value={stats.ai_alerts} icon={AlertTriangle} trend="High triage cases" />
+          <StatsCard label="Recent Diagnoses" value={stats.recent_diagnoses} icon={Activity} trend="Latest ICD mapped assessments" trendUp={stats.recent_diagnoses > 0} />
         </div>
+
+        {overviewError ? (
+          <div className="panel">
+            <div className="panel-body py-3 text-sm text-primary">{overviewError}</div>
+          </div>
+        ) : null}
 
         {/* Quick action */}
         <div className="panel">
@@ -62,10 +106,10 @@ const DoctorDashboard = () => {
           {/* Mobile card layout */}
           <div className="sm:hidden panel-body space-y-3">
             {recentDiagnoses.map((d, i) => (
-              <div key={i} className="p-3 rounded-xl border border-border hover:bg-muted/30 transition-colors">
+              <div key={`${d.patient}-${d.time}-${i}`} className="p-3 rounded-xl border border-border hover:bg-muted/30 transition-colors">
                 <div className="flex items-start justify-between mb-2">
                   <p className="text-sm font-medium text-foreground">{d.patient}</p>
-                  <StatusBadge status={d.status} />
+                  <StatusBadge status={d.status || "completed"} />
                 </div>
                 <p className="text-xs text-muted-foreground">{d.diagnosis}</p>
                 <div className="flex items-center gap-2 mt-2">
@@ -74,6 +118,9 @@ const DoctorDashboard = () => {
                 </div>
               </div>
             ))}
+            {!recentDiagnoses.length && !loading ? (
+              <p className="text-xs text-muted-foreground">No diagnoses yet. Start a new consultation to populate live overview data.</p>
+            ) : null}
           </div>
 
           {/* Desktop table layout */}
@@ -90,14 +137,19 @@ const DoctorDashboard = () => {
               </thead>
               <tbody>
                 {recentDiagnoses.map((d, i) => (
-                  <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                  <tr key={`${d.patient}-${d.time}-${i}`} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4 text-sm font-medium text-foreground">{d.patient}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{d.diagnosis}</td>
                     <td className="px-6 py-4"><span className="px-2 py-1 bg-primary/10 text-primary text-xs font-mono rounded-lg">{d.icd}</span></td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{d.time}</td>
-                    <td className="px-6 py-4"><StatusBadge status={d.status} /></td>
+                    <td className="px-6 py-4"><StatusBadge status={d.status || "completed"} /></td>
                   </tr>
                 ))}
+                {!recentDiagnoses.length && !loading ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-6 text-sm text-muted-foreground">No diagnoses yet. Start a new consultation to populate live overview data.</td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>

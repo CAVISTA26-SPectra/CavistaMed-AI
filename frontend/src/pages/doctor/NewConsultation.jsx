@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { transcribeAudio, processClinicalData, extractClinicalEntities, saveConsultationRecord } from "@/services/api";
+import { transcribeAudio, processClinicalData, extractClinicalEntities, saveConsultationRecord, startConsultationSession, searchPatientsByName } from "@/services/api";
+import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard, FilePlus, Users, ClipboardList, Brain, Settings,
   Mic, MicOff, FileText, Download, Send, ChevronDown, ChevronRight,
@@ -219,8 +220,16 @@ const buildPatientSummaryText = (summary) => {
 };
 
 const NewConsultation = () => {
+  const { token } = useAuth();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isStartingSession, setIsStartingSession] = useState(false);
+  const [patientName, setPatientName] = useState("");
+  const [consultationSessionId, setConsultationSessionId] = useState("");
+  const [lockedPatientName, setLockedPatientName] = useState("");
+  const [patientSuggestions, setPatientSuggestions] = useState([]);
+  const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
+  const [isSearchingPatients, setIsSearchingPatients] = useState(false);
   const [expandedSections, setExpandedSections] = useState(["complaint", "vitals", "assessment", "plan"]);
   const [transcriptLines, setTranscriptLines] = useState([]);
   const [emrSections, setEmrSections] = useState(defaultEmrSections);
@@ -239,6 +248,41 @@ const NewConsultation = () => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const audioMimeTypeRef = useRef("audio/webm");
+
+  useEffect(() => {
+    if (consultationSessionId) {
+      setPatientSuggestions([]);
+      setShowPatientSuggestions(false);
+      return;
+    }
+
+    const query = patientName.trim();
+    if (!query || !token) {
+      setPatientSuggestions([]);
+      return;
+    }
+
+    let isActive = true;
+    const timeoutId = setTimeout(async () => {
+      try {
+        setIsSearchingPatients(true);
+        const response = await searchPatientsByName({ query, token });
+        if (!isActive) return;
+        setPatientSuggestions(Array.isArray(response?.patients) ? response.patients : []);
+        setShowPatientSuggestions(true);
+      } catch {
+        if (!isActive) return;
+        setPatientSuggestions([]);
+      } finally {
+        if (isActive) setIsSearchingPatients(false);
+      }
+    }, 250);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+    };
+  }, [patientName, token, consultationSessionId]);
 
   const getSupportedAudioMimeType = () => {
     const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/ogg", "audio/mp4"];
@@ -266,6 +310,23 @@ const NewConsultation = () => {
   const startRecording = async () => {
     try {
       setError(null);
+
+      const normalizedPatientName = patientName.trim();
+      if (!normalizedPatientName) {
+        setError("Please enter patient name before starting recording.");
+        return;
+      }
+
+      if (!consultationSessionId) {
+        setIsStartingSession(true);
+        const session = await startConsultationSession({
+          patientName: normalizedPatientName,
+          token,
+        });
+        setConsultationSessionId(session?.session_id || "");
+        setLockedPatientName(session?.patient?.name || normalizedPatientName);
+      }
+
       audioChunksRef.current = [];
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const supportedMimeType = getSupportedAudioMimeType();
@@ -288,7 +349,9 @@ const NewConsultation = () => {
       setIsRecording(true);
     } catch (err) {
       console.error("Error starting recording:", err);
-      setError("Could not access microphone. Please check permissions.");
+      setError(err.message || "Could not access microphone. Please check permissions.");
+    } finally {
+      setIsStartingSession(false);
     }
   };
 
@@ -305,6 +368,12 @@ const NewConsultation = () => {
     } else {
       startRecording();
     }
+  };
+
+  const selectPatient = (patient) => {
+    setPatientName(patient?.name || "");
+    setShowPatientSuggestions(false);
+    setError(null);
   };
 
   const processAudio = async (audioBlob) => {
@@ -467,13 +536,15 @@ const NewConsultation = () => {
 
         try {
           await saveConsultationRecord({
-            patientName: "Walk-in Patient",
+            patientName: lockedPatientName || patientName,
             transcript: transcriptForReport,
             clinicalData,
             status: "completed",
+            sessionId: consultationSessionId,
           });
         } catch (persistErr) {
           console.warn("Consultation generated but could not be persisted for dashboard overview:", persistErr);
+          setError(persistErr?.message || "EMR generated, but MongoDB persistence failed.");
         }
 
         setGeneratedReport({
@@ -562,19 +633,62 @@ const NewConsultation = () => {
             </span>
           </div>
 
+          <div className="px-4 sm:px-5 py-3 border-b border-border/50 space-y-2 relative">
+            <label className="block text-xs font-semibold text-foreground">Patient Name</label>
+            <input
+              type="text"
+              value={patientName}
+              onChange={(e) => setPatientName(e.target.value)}
+              onFocus={() => {
+                if (!consultationSessionId && patientSuggestions.length) {
+                  setShowPatientSuggestions(true);
+                }
+              }}
+              onBlur={() => setTimeout(() => setShowPatientSuggestions(false), 120)}
+              disabled={isRecording || Boolean(consultationSessionId)}
+              placeholder="Enter registered patient name"
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            {!consultationSessionId && showPatientSuggestions && (patientSuggestions.length > 0 || isSearchingPatients) ? (
+              <div className="absolute left-4 right-4 top-[72px] z-20 rounded-lg border border-border bg-background shadow-lg max-h-44 overflow-y-auto">
+                {isSearchingPatients ? (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">Searching patients...</div>
+                ) : (
+                  patientSuggestions.map((patient) => (
+                    <button
+                      key={patient.id}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => selectPatient(patient)}
+                      className="w-full text-left px-3 py-2 hover:bg-muted/40 transition-colors"
+                    >
+                      <p className="text-sm text-foreground font-medium">{patient.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{patient.email || "No email"}</p>
+                    </button>
+                  ))
+                )}
+              </div>
+            ) : null}
+            {consultationSessionId ? (
+              <p className="text-[11px] text-emerald-600">Session linked for {lockedPatientName || patientName}</p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">Recording starts only if this patient exists in users DB.</p>
+            )}
+          </div>
+
           {/* Mic Button with wavy dots */}
           <div className="flex flex-col items-center py-6 sm:py-8 border-b border-border/50">
             {/* Mic Button */}
             <button
               onClick={toggleRecording}
-              disabled={isProcessing}
+              disabled={isProcessing || isStartingSession}
               className={`rounded-full flex items-center justify-center transition-all duration-500 ${isRecording
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                 : "bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105"
-                } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
+                } ${(isProcessing || isStartingSession) ? "opacity-50 cursor-not-allowed" : ""}`}
               style={{ width: '72px', height: '72px' }}
             >
-              {isProcessing ? <Loader2 className="w-7 h-7 animate-spin" /> : isRecording ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
+              {(isProcessing || isStartingSession) ? <Loader2 className="w-7 h-7 animate-spin" /> : isRecording ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
             </button>
 
             {/* Horizontal wavy dots — visible when recording */}
@@ -601,7 +715,7 @@ const NewConsultation = () => {
               </div>
             ) : (
               <p className="text-xs text-muted-foreground mt-4">
-                Click to start recording
+                {isStartingSession ? "Validating patient in database..." : "Click to start recording"}
               </p>
             )}
 
